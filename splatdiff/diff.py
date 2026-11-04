@@ -6,8 +6,19 @@ CONF_THRESHOLD = 0.5
 MOVED_MIN_CONF = 0.8
 
 def summarize_track(parsed: dict) -> dict:
-    """Summarise one concept in one video."""
-    frames, confs, best_frame, best_box, best_c, max_inst = 0, [], None, None, -1.0, 0
+    """Summarise one concept in one video.
+
+    ``best_frame``/``best_box`` are chosen by a demo-friendly score rather
+    than raw confidence alone: detections cut off at the frame border are
+    penalised (centrality 0.5 vs 1.0 for boxes at least 2 px inside every
+    edge), with a small bonus for larger boxes:
+
+        score = c * centrality * (0.75 + 0.25 * min(1, area_frac * 8))
+
+    ``best_conf`` remains the raw confidence of the chosen detection, and
+    ``mean_conf``/``frames_detected``/``max_instances`` are unchanged.
+    """
+    frames, confs, best_frame, best_box, best_c, best_score, max_inst = 0, [], None, None, -1.0, -1.0, 0
     for frame_idx in sorted((parsed or {}).keys(), key=lambda x: int(x)):
         dets = [d for d in parsed[frame_idx] if float(d.get("c", 0)) >= CONF_THRESHOLD]
         if not dets:
@@ -15,8 +26,21 @@ def summarize_track(parsed: dict) -> dict:
         frames += 1; max_inst = max(max_inst, len(dets))
         for d in dets:
             c = float(d.get("c", 0)); confs.append(c)
-            if c > best_c:
-                best_c, best_frame, best_box = c, int(frame_idx), list(d.get("box"))
+            box = list(d.get("box") or [])
+            # Centrality / area need a valid box and frame size; be defensive.
+            centrality, area_frac = 1.0, 0.0
+            try:
+                w, h = float(d.get("w", 0) or 0), float(d.get("h", 0) or 0)
+                if len(box) == 4 and w > 0 and h > 0:
+                    x1, y1, x2, y2 = (float(v) for v in box)
+                    touches = x1 < 2 or y1 < 2 or x2 > w - 2 or y2 > h - 2
+                    centrality = 0.5 if touches else 1.0
+                    area_frac = max(0.0, (x2 - x1) * (y2 - y1)) / (w * h)
+            except Exception:
+                centrality, area_frac = 1.0, 0.0
+            score = c * centrality * (0.75 + 0.25 * min(1.0, area_frac * 8))
+            if score > best_score:
+                best_score, best_c, best_frame, best_box = score, c, int(frame_idx), list(d.get("box"))
     return {"frames_detected": frames, "max_instances": max_inst,
             "mean_conf": (sum(confs) / len(confs)) if confs else 0.0,
             "best_frame": best_frame, "best_box": best_box,
