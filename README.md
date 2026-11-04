@@ -42,13 +42,15 @@ Eval on the synthetic Muse-Image pair (ground truth: backpack removed, floor lam
 
 | Claims | n claims | Precision | Recall | Hallucinated-claim rate |
 |---|---|---|---|---|
-| Raw Muse Spark 1.3 claims | 5 | 0.60 | 1.00 | 0.40 |
-| Grounded kept claims (after filter) | 3 | 1.00 | 1.00 | 0.00 |
+| Raw Muse Spark 1.3 claims (run 1) | 5 | 0.60 | 1.00 | 0.40 |
+| Grounded kept claims (run 1) | 3 | 1.00 | 1.00 | 0.00 |
+| Raw Muse Spark 1.3 claims (run 2, fresh/uncached) | 4 | 0.75 | 1.00 | 0.25 |
+| Grounded kept claims (run 2, fresh/uncached) | 3 | 1.00 | 1.00 | 0.00 |
 
-Dropped claims on this pair:
+Model outputs vary between runs, so two fresh runs are shown. Dropped claims on this pair:
 
-- `armchair added` — SAM image re-check found armchair in BEFORE keyframe 1, c=0.75; SAM video tracking had missed it.
-- `throw blanket moved` — moved-judge confidence 0.75 < 0.80.
+- `armchair added` (both runs) — SAM image re-check found armchair in BEFORE keyframe 1, c=0.75; SAM video tracking had missed it.
+- `throw blanket moved` (run 1) — moved-judge confidence 0.75 < 0.80.
 
 **Read this honestly:** this is n=1 synthetic pair, and the 0.80 moved threshold was set after looking at this pair, so this is a smoke test, not a benchmark. Real-footage results are pending.
 
