@@ -1,0 +1,4 @@
+done in 67s, 53201 chars, usage={'input_tokens': 15536, 'input_tokens_details': {'cached_tokens': 0}, 'output_tokens': 17805, 'output_tokens_details': {'reasoning_tokens': 4715}, 'total_tokens': 33341}
+wrote:
+  splatdiff/spark.py
+  splatdiff/pipeline.py

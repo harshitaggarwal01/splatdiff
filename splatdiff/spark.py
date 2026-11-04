@@ -82,6 +82,85 @@ def list_objects(before_frames: list, after_frames: list, concepts=None) -> list
                           "suspected_change": str(o.get("suspected_change", "unchanged"))})
     return clean
 
+def suggest_aliases(concept, keyframe_paths) -> list[str]:
+    """Suggest up to 3 SAM-friendly alternative names for ``concept``.
+
+    Sends 2 BEFORE keyframes + 2 AFTER keyframes (the caller passes them
+    in that order; generically the first half are labelled BEFORE and the
+    rest AFTER) and asks Spark for short visual noun phrases a
+    text-prompted segmentation model would recognise for this object as
+    it appears in these photos (e.g. walker -> 'walking frame',
+    'metal walker'). Returns a cleaned list of at most 3 aliases,
+    excluding the original concept; [] on any failure.
+    """
+    concept_clean = " ".join(str(concept or "").strip().lower().split())
+    if not concept_clean:
+        return []
+    paths = []
+    if keyframe_paths:
+        try:
+            paths = list(keyframe_paths)
+        except Exception:
+            paths = [keyframe_paths]
+    paths = [p for p in paths if p is not None and str(p) != ""]
+    # Pipeline passes 2 BEFORE + 2 AFTER. Split in half generically so a
+    # direct caller passing 4 (or 2, or 6) paths still gets every image
+    # sent, labelled BEFORE for the first half and AFTER for the rest.
+    if len(paths) >= 2:
+        n_before = min(2, (len(paths) + 1) // 2) if len(paths) != 4 else 2
+        if len(paths) == 4:
+            n_before = 2
+    elif paths:
+        n_before = 1
+    else:
+        n_before = 0
+    before_paths, after_paths = paths[:n_before], paths[n_before:]
+    content = [text_part(
+        f"The object '{concept_clean}' was not found by a text-prompted segmentation model (SAM) "
+        "under that name in these room photos. Give up to 3 alternative short visual noun phrases a "
+        "text-prompted segmentation model would recognise for this object as it appears in these photos "
+        "(e.g. walker -> 'walking frame', 'metal walker'). Use short singular visual noun phrases that "
+        "describe what the object looks like, not its function alone. Do not repeat the original concept. "
+        'Return STRICT JSON only, no markdown: {"aliases": ["...", "..."]}'
+    )]
+    for i, p in enumerate(before_paths):
+        content.append(text_part(f"BEFORE frame {i}"))
+        try:
+            content.append(image_part(p))
+        except Exception as e:
+            log.warning("suggest_aliases: skipping unreadable keyframe %s: %s", p, e)
+    for i, p in enumerate(after_paths):
+        content.append(text_part(f"AFTER frame {i}"))
+        try:
+            content.append(image_part(p))
+        except Exception as e:
+            log.warning("suggest_aliases: skipping unreadable keyframe %s: %s", p, e)
+    try:
+        data = _call_json(content, max_tokens=1000, what=f"suggest_aliases {concept_clean}")
+    except Exception as e:
+        log.warning("suggest_aliases failed for %s: %s", concept_clean, e)
+        return []
+    if isinstance(data, dict):
+        raw = data.get("aliases", [])
+    elif isinstance(data, (list, tuple)):
+        raw = data
+    else:
+        raw = []
+    if not isinstance(raw, (list, tuple)):
+        raw = [raw]
+    out, seen = [], set()
+    for item in raw:
+        if isinstance(item, dict):
+            item = item.get("alias") or item.get("concept") or item.get("name") or ""
+        alias = " ".join(str(item or "").strip().lower().split())
+        if not alias or alias == concept_clean or alias in seen:
+            continue
+        seen.add(alias)
+        out.append(alias)
+        if len(out) >= 3:
+            break
+    return out
+
 def _crop(frame_path, box, out_path):
     img = cv2.imread(str(frame_path))
     if img is None or not box:
@@ -122,16 +201,53 @@ def judge_moved(concept: str, before_img, after_img, before_box=None, after_box=
             return {"moved": False, "confidence": 0.0, "reason": "no response"}
         return {"moved": False, "confidence": 0.0, "reason": "unparseable Spark response"}
 
-def write_claims(diff_table, moved_verdicts=None) -> dict:
-    """Final Spark call: write claims from the SAM diff table."""
+def _clean_watchlist(watchlist) -> list[str]:
+    if not watchlist:
+        return []
+    if isinstance(watchlist, str):
+        watchlist = [c.strip() for c in watchlist.split(",")]
+    out, seen = [], set()
+    for item in watchlist:
+        c = str(item).strip().lower()
+        if c and c not in seen:
+            seen.add(c); out.append(c)
+    return out
+
+def _clean_risk(value) -> str:
+    v = str(value or "").strip().lower()
+    return v if v in ("high", "medium", "low") else "medium"
+
+def write_claims(diff_table, moved_verdicts=None, watchlist=None) -> dict:
+    """Final Spark call: write claims from the SAM diff table.
+
+    Every claim carries ``risk`` (high|medium|low) and ``risk_reason``
+    judged through a caregiver fall/safety lens for an older adult.
+    ``watchlist`` items are called out in the prompt so Spark knows
+    which items matter most to the caregiver.
+    """
     import json as _json
-    payload = {"diff_table": diff_table, "moved_verdicts": moved_verdicts or {}}
+    watch = _clean_watchlist(watchlist)
+    payload = {"diff_table": diff_table, "moved_verdicts": moved_verdicts or {},
+               "watchlist": watch}
+    watch_text = (
+        "The caregiver WATCHLIST (items that must stay put and matter most): "
+        + (", ".join(watch) if watch else "(none)")
+        + ". Changes to watchlist items should normally be high risk unless "
+          "the evidence clearly shows the item remains safely within reach. "
+    )
     content = [text_part(
         "You are writing a grounded room-change report (caregiver safety / rental inspection). Below is SAM 3.1 evidence "
         "per concept: presence, frames detected, boxes, confidences, SAM label (added/removed/present_both/not_found) and "
         "pairwise moved verdicts. Write claims ONLY for real changes (added/removed/moved). Do not invent objects. "
+        + watch_text +
+        "For EVERY claim also judge 'risk' (\"high\"|\"medium\"|\"low\") and 'risk_reason' (short str) through a caregiver "
+        "fall/safety lens for an older adult living alone: HIGH = trip hazards on the floor, or mobility aids (walker, "
+        "cane), medication, or a phone moved out of reach / missing, or anything blocking a walkway to the bed, chair, "
+        "bathroom or exit; MEDIUM = changes that could plausibly affect safety, reach, lighting or daily routine but are "
+        "not an immediate fall/reach hazard; LOW = cosmetic or safety-irrelevant changes (decor, cushions, books). "
         "Return STRICT JSON only: {\"summary\": \"str\", \"claims\": [{\"concept\": \"str\", "
-        "\"change\": \"added|removed|moved\", \"explanation\": \"str\", \"safety_note\": \"str or null\"}]}. "
+        "\"change\": \"added|removed|moved\", \"explanation\": \"str\", \"safety_note\": \"str or null\", "
+        "\"risk\": \"high|medium|low\", \"risk_reason\": \"str\"}]}. "
         "safety_note: a short caregiver/rental-relevant note or null.\nDATA:\n" + _json.dumps(payload, default=str))]
     try:
         d = _call_json(content, what="write_claims")
@@ -139,9 +255,11 @@ def write_claims(diff_table, moved_verdicts=None) -> dict:
             raise ValueError("empty text, cannot parse JSON" if not d else "parsed JSON is not an object")
         claims = []
         for c in d.get("claims", []):
-            if c.get("concept") and c.get("change") in ("added", "removed", "moved"):
+            if isinstance(c, dict) and c.get("concept") and c.get("change") in ("added", "removed", "moved"):
                 claims.append({"concept": str(c["concept"]).strip().lower(), "change": c["change"],
-                               "explanation": str(c.get("explanation", "")), "safety_note": c.get("safety_note")})
+                               "explanation": str(c.get("explanation", "")), "safety_note": c.get("safety_note"),
+                               "risk": _clean_risk(c.get("risk")),
+                               "risk_reason": str(c.get("risk_reason") or "")})
         return {"summary": str(d.get("summary", "")), "claims": claims}
     except Exception as e:
         log.warning("write_claims parse failed: %s", e)

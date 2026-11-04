@@ -160,19 +160,80 @@ def _recheck_reason(key: str, s: dict, change: str) -> str | None:
                 f"(c={c_val:.2f}) - not removed")
     return None
 
-def grounding_filter(raw_claims: list, summaries: dict, moved_verdicts: dict | None = None) -> tuple[list, list]:
+def _clean_watchlist(watchlist) -> list[str]:
+    if not watchlist:
+        return []
+    if isinstance(watchlist, str):
+        watchlist = [c.strip() for c in watchlist.split(",")]
+    out, seen = [], set()
+    for item in watchlist or []:
+        c = _norm(item)
+        if c and c not in seen:
+            seen.add(c); out.append(c)
+    return out
+
+def _is_watchlist(concept: str, watchlist_norm: list[str]) -> bool:
+    """Case-insensitive watchlist match with token-overlap fuzziness."""
+    n = _norm(concept)
+    if not n or not watchlist_norm:
+        return False
+    if n in watchlist_norm:
+        return True
+    n_tokens = set(n.split())
+    for w in watchlist_norm:
+        if n_tokens & set(w.split()):
+            return True
+    return False
+
+def _clean_risk(value) -> str | None:
+    v = str(value or "").strip().lower()
+    return v if v in ("high", "medium", "low") else None
+
+def _claim_risk(claim: dict, concept: str, watchlist_norm: list[str]) -> tuple[str, str]:
+    """Risk carried from Spark, with a defensive fallback."""
+    risk = _clean_risk(claim.get("risk"))
+    reason = str(claim.get("risk_reason") or "")
+    if risk is not None:
+        return risk, reason
+    # Spark omitted/invalid risk: watchlist changes are safety-relevant.
+    if _is_watchlist(concept, watchlist_norm):
+        return "high", reason or f"'{concept}' is on the caregiver watchlist, so any change to it is treated as high risk."
+    return "medium", reason
+
+def _sam_only_risk(concept: str, change: str, watchlist_norm: list[str]) -> tuple[str, str]:
+    """Simple risk rule for SAM-only kept claims (no Spark judgement)."""
+    if _is_watchlist(concept, watchlist_norm):
+        return "high", (f"'{concept}' is on the caregiver watchlist and SAM detected it as {change}; "
+                        "check it is within reach and not a trip hazard.")
+    return "medium", (f"SAM detected '{concept}' as {change} but Spark did not assess it; "
+                      "defaulting to medium risk pending a caregiver check.")
+
+def grounding_filter(raw_claims: list, summaries: dict, moved_verdicts: dict | None = None,
+                     watchlist=None) -> tuple[list, list]:
     """Keep only claims SAM supports; add SAM-only added/removed claims.
 
     'moved' requires present_both AND a moved verdict with
     confidence >= MOVED_MIN_CONF.
+
+    ``risk``/``risk_reason`` from Spark (see spark.write_claims) are
+    carried through onto BOTH kept and dropped claims. SAM-only kept
+    claims get risk from a simple rule: watchlist item -> high,
+    otherwise medium.
     """
     moved_verdicts = moved_verdicts or {}
+    watchlist_norm = _clean_watchlist(watchlist)
     kept, dropped, kept_concepts = [], [], set()
     for claim in raw_claims or []:
+        if not isinstance(claim, dict):
+            dropped.append({"concept": str(claim), "change": None, "explanation": "", "safety_note": None,
+                            "risk": "medium", "risk_reason": "",
+                            "reason": "malformed claim (not an object)"}); continue
         concept_raw, change = str(claim.get("concept", "")), claim.get("change")
         key, s = _find(concept_raw, summaries)
+        risk, risk_reason = _claim_risk(claim, key or concept_raw, watchlist_norm)
         if s is None:
-            dropped.append({**claim, "reason": f"no SAM evidence: concept '{concept_raw}' was not tracked"}); continue
+            dropped.append({**claim, "concept": concept_raw, "risk": risk, "risk_reason": risk_reason,
+                            "reason": f"no SAM evidence: concept '{concept_raw}' was not tracked"}); continue
         label = s["label"]
         ok, reason = False, ""
         if change == "added":
@@ -205,16 +266,22 @@ def grounding_filter(raw_claims: list, summaries: dict, moved_verdicts: dict | N
             reason = f"unsupported change type '{change}'"
         if ok:
             kept.append({"concept": key, "change": change, "explanation": claim.get("explanation", ""),
-                         "safety_note": claim.get("safety_note"), "source": "spark", "evidence": _evidence(key, s)})
+                         "safety_note": claim.get("safety_note"), "source": "spark",
+                         "risk": risk, "risk_reason": risk_reason,
+                         "evidence": _evidence(key, s)})
             kept_concepts.add(key)
         else:
-            dropped.append({**claim, "concept": key, "reason": reason})
+            dropped.append({**claim, "concept": key, "risk": risk, "risk_reason": risk_reason,
+                            "reason": reason})
     # SAM-only added/removed that Spark missed
     for concept, s in summaries.items():
         if s["label"] in ("added", "removed") and concept not in kept_concepts:
+            risk, risk_reason = _sam_only_risk(concept, s["label"], watchlist_norm)
             kept.append({"concept": concept, "change": s["label"],
                          "explanation": f"SAM 3.1 detected '{concept}' as {s['label']} (present in "
                                         f"{s['after']['frames_detected'] if s['label']=='added' else s['before']['frames_detected']} frames).",
-                         "safety_note": None, "source": "sam", "evidence": _evidence(concept, s)})
+                         "safety_note": None, "source": "sam",
+                         "risk": risk, "risk_reason": risk_reason,
+                         "evidence": _evidence(concept, s)})
             kept_concepts.add(concept)
     return kept, dropped

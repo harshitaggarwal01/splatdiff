@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SplatDiff compares two room walkthroughs and reports what changed, with evidence for every finding.">
+  <title>SplatDiff — Room check</title>
+  <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/web/app.css">
+  <script src="/web/app.js" defer></script>
+</head>
+<body>
+  <div class="sheet">
+
+    <header class="masthead">
+      <div class="masthead-top">
+        <div class="wordmark-block">
+          <span class="wordmark">SplatDiff</span>
+          <span class="wordmark-sub">Room check</span>
+        </div>
+        <div class="masthead-right">
+          <time class="today mono" id="todayDate" datetime=""></time>
+          <button type="button" class="btn btn-quiet" id="historyBtn" aria-expanded="false" aria-controls="historyDrawer">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            Past checks
+          </button>
+        </div>
+      </div>
+
+      <div class="history-drawer" id="historyDrawer" hidden>
+        <div class="history-drawer-head">
+          <h2 class="drawer-title">Past checks</h2>
+          <button type="button" class="icon-btn" id="historyClose" aria-label="Close past checks">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>
+          </button>
+        </div>
+        <div id="historyList" class="history-list" aria-live="polite"></div>
+      </div>
+
+      <h1 class="promise">What changed in Mom&rsquo;s room since your last visit?</h1>
+      <p class="promise-sub">Film the room on each visit. SplatDiff compares the two walkthroughs with Meta&rsquo;s SAM&nbsp;3.1 and Muse&nbsp;Spark, and every finding comes with evidence — or it is struck from the report.</p>
+    </header>
+
+    <main>
+      <section class="intake" id="intake" aria-labelledby="intakeTitle">
+        <h2 class="section-title" id="intakeTitle">The visit</h2>
+
+        <div class="drop-grid">
+          <div class="dropzone-wrap">
+            <div class="dropzone" id="dropBefore" data-side="before" tabindex="0" role="button"
+                 aria-label="Choose the video from the last visit" aria-describedby="dropBeforeHint">
+              <input type="file" id="fileBefore" accept="video/*" class="file-input" tabindex="-1" aria-hidden="true">
+              <div class="dropzone-empty" id="dropBeforeEmpty">
+                <svg class="icon icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                <span class="dropzone-label">Last visit</span>
+                <span class="dropzone-hint" id="dropBeforeHint">Click or drop a walkthrough video</span>
+              </div>
+              <video class="dropzone-video" id="videoBefore" controls playsinline preload="metadata" hidden></video>
+              <span class="dropzone-file mono" id="fileNameBefore" hidden></span>
+            </div>
+          </div>
+
+          <div class="dropzone-wrap">
+            <div class="dropzone" id="dropAfter" data-side="after" tabindex="0" role="button"
+                 aria-label="Choose the video from today" aria-describedby="dropAfterHint">
+              <input type="file" id="fileAfter" accept="video/*" class="file-input" tabindex="-1" aria-hidden="true">
+              <div class="dropzone-empty" id="dropAfterEmpty">
+                <svg class="icon icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                <span class="dropzone-label">Today</span>
+                <span class="dropzone-hint" id="dropAfterHint">Click or drop a walkthrough video</span>
+              </div>
+              <video class="dropzone-video" id="videoAfter" controls playsinline preload="metadata" hidden></video>
+              <span class="dropzone-file mono" id="fileNameAfter" hidden></span>
+            </div>
+          </div>
+        </div>
+
+        <p class="sample-note mono" id="sampleNote" hidden></p>
+
+        <div class="care-row">
+          <div class="watchlist-block">
+            <label class="field-label" for="tagInput">Must stay put</label>
+            <p class="field-help">Things that should never move — a walker, night medicines, the phone. Press Enter or comma to add.</p>
+            <div class="tag-box" id="tagBox">
+              <span class="tag-list" id="tagList"></span>
+              <input type="text" id="tagInput" class="tag-input" placeholder="Add an item, e.g. walker"
+                     autocomplete="off" spellcheck="false" aria-label="Add an item that must stay put">
+            </div>
+          </div>
+
+          <div class="voice-block">
+            <span class="field-label" id="voiceLabel">Care notes</span>
+            <p class="field-help">Say what matters and we will add it to the watchlist.</p>
+            <div class="voice-controls" role="group" aria-labelledby="voiceLabel">
+              <button type="button" class="btn btn-quiet" id="voiceBtn">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4"/><path d="M8 23h8"/></svg>
+                <span id="voiceBtnText">Speak your care notes</span>
+              </button>
+              <button type="button" class="btn btn-quiet btn-stop" id="voiceStopBtn" hidden>
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                Stop
+              </button>
+              <span class="voice-timer mono" id="voiceTimer" hidden aria-live="polite">0:00</span>
+            </div>
+            <p class="voice-status" id="voiceStatus" role="status" aria-live="polite" hidden></p>
+            <blockquote class="voice-quote" id="voiceQuote" hidden>
+              <span class="voice-quote-label">Heard:</span>
+              <span class="voice-quote-text" id="voiceQuoteText"></span>
+            </blockquote>
+            <label class="check-row" for="narrationCheck">
+              <input type="checkbox" id="narrationCheck">
+              <span>Also listen to what I said while filming</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn btn-primary" id="runBtn" disabled>
+            Check the room
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+          </button>
+          <button type="button" class="btn btn-quiet" id="sampleBtn">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+            Use the sample room
+          </button>
+          <p class="actions-error" id="runError" role="alert" hidden></p>
+        </div>
+      </section>
+
+      <section class="live" id="liveSection" aria-labelledby="liveTitle" hidden>
+        <h2 class="section-title" id="liveTitle">The check, as it happens</h2>
+        <ol class="stage-list" id="stageList"></ol>
+        <p class="ledger-line mono" id="ledgerLine" aria-live="polite">elapsed 0.0 s · cost $0.00 · models used: —</p>
+        <div class="live-error" id="liveError" hidden>
+          <p class="live-error-text" id="liveErrorText" role="alert"></p>
+          <button type="button" class="btn btn-quiet" id="retryBtn">Try again</button>
+        </div>
+      </section>
+
+      <section class="report" id="reportSection" aria-labelledby="reportSummary" hidden>
+        <p class="print-header" id="printHeader">Room check</p>
+
+        <h2 class="report-summary" id="reportSummary"></h2>
+        <p class="report-stats mono" id="reportStats"></p>
+
+        <div class="report-block" id="watchlistBlock" hidden>
+          <h3 class="report-heading">Care watchlist</h3>
+          <div id="watchlistRows"></div>
+        </div>
+
+        <div class="report-block" id="findingsBlock">
+          <h3 class="report-heading">What changed</h3>
+          <p class="report-empty" id="findingsEmpty" hidden>No changes could be proven from the evidence in these two walkthroughs.</p>
+          <div id="findingsList"></div>
+        </div>
+
+        <div class="report-block" id="struckBlock" hidden>
+          <h3 class="report-heading">Struck from the report</h3>
+          <p class="report-note">These were suggested during the check but the SAM&nbsp;3.1 evidence did not support them, so they were removed.</p>
+          <div id="struckList"></div>
+        </div>
+
+        <footer class="report-footer">
+          <div class="footer-ledger" id="footerLedger"></div>
+          <div class="footer-actions">
+            <button type="button" class="btn btn-quiet" id="printBtn">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              Print for family
+            </button>
+            <button type="button" class="btn btn-quiet" id="copyBtn">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span id="copyBtnText">Copy summary</span>
+            </button>
+          </div>
+        </footer>
+      </section>
+    </main>
+
+    <footer class="colophon">
+      <p>Every finding above is held to its SAM&nbsp;3.1 evidence. If the evidence is not there, the finding is struck — never guessed.</p>
+    </footer>
+  </div>
+</body>
+</html>
