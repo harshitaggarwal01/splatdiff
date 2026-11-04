@@ -9,3 +9,4 @@ data/*.mov
 !data/sample_before.mp4
 !data/sample_after.mp4
 .claude/
+.claude-flow/
