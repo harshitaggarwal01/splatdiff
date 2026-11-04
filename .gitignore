@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+cache/
+outputs/
+.venv/
+data/*.mp4
+data/*.mov
+!data/sample_before.mp4
+!data/sample_after.mp4

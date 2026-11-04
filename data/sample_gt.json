@@ -1,0 +1,14 @@
+[
+  {
+    "concept": "backpack",
+    "change": "removed"
+  },
+  {
+    "concept": "floor lamp",
+    "change": "moved"
+  },
+  {
+    "concept": "red suitcase",
+    "change": "added"
+  }
+]

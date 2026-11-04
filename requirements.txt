@@ -1,0 +1,7 @@
+gradio
+opencv-python-headless
+numpy
+requests
+python-dotenv
+imageio-ffmpeg
+pillow
