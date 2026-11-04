@@ -1,6 +1,6 @@
 """Meta Model API client: retries, disk cache, cost ledger."""
 from __future__ import annotations
-import base64, hashlib, json, logging, os, time
+import base64, hashlib, json, logging, os, threading, time
 from pathlib import Path
 import requests
 from dotenv import load_dotenv
@@ -11,6 +11,7 @@ BASE_URL = "https://api.meta.ai/v1"
 CACHE_DIR = Path("cache")
 RESP_CACHE = CACHE_DIR / "responses"
 COSTS_FILE = CACHE_DIR / "costs.jsonl"
+_COST_LOCK = threading.Lock()  # SAM/Spark calls log from worker threads
 FILES_CACHE = CACHE_DIR / "files.json"
 _session = requests.Session()
 
@@ -67,16 +68,24 @@ def _log_cost(model: str, kind: str, est_usd: float, latency_s: float) -> None:
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
         row = {"model": model, "kind": kind, "est_usd": round(float(est_usd), 6),
                "latency_s": round(float(latency_s), 3), "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
-        with COSTS_FILE.open("a", encoding="utf-8") as f:
+        with _COST_LOCK, COSTS_FILE.open("a", encoding="utf-8") as f:
             f.write(json.dumps(row) + "\n")
     except Exception as e:
         log.warning("cost ledger failed: %s", e)
 
 def total_cost() -> float:
+    """Sum the ledger, skipping any malformed line instead of zeroing the total."""
+    total = 0.0
     try:
-        return sum(float(json.loads(l).get("est_usd", 0)) for l in COSTS_FILE.read_text(encoding="utf-8").splitlines() if l.strip())
+        lines = COSTS_FILE.read_text(encoding="utf-8").splitlines()
     except Exception:
         return 0.0
+    for l in lines:
+        try:
+            total += float(json.loads(l).get("est_usd", 0))
+        except Exception:
+            continue
+    return total
 
 def responses(body: dict) -> dict:
     """POST /v1/responses with cache, retries on 429/5xx/timeout, never retry 400.

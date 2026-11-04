@@ -172,21 +172,48 @@ def run(before, after, concepts=None, out_dir="outputs", progress=None) -> dict:
     _run_image_rechecks(summaries, bf, af, prog)
     prog("Judging moved objects with Muse Spark 1.3…")
     moved_verdicts = {}
-    for concept, s in summaries.items():
-        if s["label"] != "present_both":
-            continue
-        bframe, bbox = _judge_frame("before", s, before_norm, bf)
-        aframe, abox = _judge_frame("after", s, after_norm, af)
-        if bframe is None or aframe is None:
-            moved_verdicts[concept] = {"moved": False, "confidence": 0.0, "reason": "best frame unavailable"}; continue
-        bp, ap = out / f"_judge_{_safe(concept)}_before.jpg", out / f"_judge_{_safe(concept)}_after.jpg"
-        cv2.imwrite(str(bp), bframe); cv2.imwrite(str(ap), aframe)
+    judge_items = [(concept, s) for concept, s in summaries.items() if s["label"] == "present_both"]
+    if judge_items:
+        prog(f"Judging moved objects concurrently for {len(judge_items)} concept(s)…")
+    def _judge_job(item):
+        concept, s = item
+        bp = ap = None
         try:
-            moved_verdicts[concept] = judge_moved(concept, str(bp), str(ap), bbox, abox)
+            bframe, bbox = _judge_frame("before", s, before_norm, bf)
+            aframe, abox = _judge_frame("after", s, after_norm, af)
+            if bframe is None or aframe is None:
+                return concept, {"moved": False, "confidence": 0.0, "reason": "best frame unavailable"}
+            bp, ap = out / f"_judge_{_safe(concept)}_before.jpg", out / f"_judge_{_safe(concept)}_after.jpg"
+            cv2.imwrite(str(bp), bframe); cv2.imwrite(str(ap), aframe)
+            try:
+                verdict = judge_moved(concept, str(bp), str(ap), bbox, abox)
+            except Exception as e:
+                log.exception("judge_moved failed %s", concept)
+                verdict = {"moved": False, "confidence": 0.0, "reason": str(e)}
+            return concept, verdict
         except Exception as e:
             log.exception("judge_moved failed %s", concept)
-            moved_verdicts[concept] = {"moved": False, "confidence": 0.0, "reason": str(e)}
-        bp.unlink(missing_ok=True); ap.unlink(missing_ok=True)
+            return concept, {"moved": False, "confidence": 0.0, "reason": str(e)}
+        finally:
+            # judge temp files are per-concept, so concurrent cleanup is safe.
+            for _p in (bp, ap):
+                if _p is not None:
+                    try:
+                        _p.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+    if judge_items:
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            # ex.map preserves input order, so moved_verdicts keeps the
+            # same key order as the sequential version; progress is
+            # reported from the main thread as each result is yielded.
+            for concept, verdict in ex.map(_judge_job, judge_items):
+                moved_verdicts[concept] = verdict
+                try:
+                    prog(f"Judged '{concept}': moved={bool(verdict.get('moved'))} "
+                         f"(confidence {float(verdict.get('confidence', 0.0)):.2f})")
+                except Exception:
+                    prog(f"Judged '{concept}': {verdict}")
     prog("Writing grounded report with Muse Spark 1.3…")
     # Deliberately pass original (pre-recheck) summaries: raw Spark claims
     # stay separate from, and are then checked against, corrected evidence.

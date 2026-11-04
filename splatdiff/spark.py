@@ -9,9 +9,46 @@ from .video_io import draw_box
 log = logging.getLogger("splatdiff.spark")
 MODEL = "muse-spark-1.3"
 
-def _call(content: list, max_tokens: int = 4000) -> str:
-    body = {"model": MODEL, "input": [user_message(content)], "reasoning": {"effort": "low"}, "max_output_tokens": max_tokens}
-    return extract_text(responses(body))
+def _make_body(content: list, max_tokens: int = 4000, retry: bool = False) -> dict:
+    body = {"model": MODEL, "input": [user_message(content)], "reasoning": {"effort": "low"},
+            "max_output_tokens": 8000 if retry else max_tokens}
+    if retry:
+        # Extra field changes the request-json hash, so a cached (possibly
+        # empty) first response is not returned again from the disk cache.
+        body["metadata"] = {"retry": "1"}
+    return body
+
+def _call(content: list, max_tokens: int = 4000, retry: bool = False) -> str:
+    return extract_text(responses(_make_body(content, max_tokens=max_tokens, retry=retry)))
+
+def _call_json(content: list, max_tokens: int = 4000, what: str = "spark"):
+    """Call Spark and parse strict JSON, retrying once on empty/bad output.
+
+    Retry uses metadata={'retry': '1'} (bypasses the disk cache for the
+    original request), max_output_tokens=8000 and reasoning effort 'low'.
+    Raises the last parse/empty error if both attempts fail, so callers can
+    return their conservative defaults. Empty responses are never treated
+    as valid and are not (re-)served for the retry thanks to the changed
+    request body / cache key.
+    """
+    last_exc: Exception | None = None
+    for attempt in (0, 1):
+        retry = attempt == 1
+        text = _call(content, max_tokens=max_tokens, retry=retry)
+        if not text or not str(text).strip():
+            last_exc = ValueError("empty text, cannot parse JSON")
+            log.warning("%s: empty text from Spark (attempt %d/2)%s",
+                        what, attempt + 1, "; retrying with larger budget" if not retry else "")
+            continue
+        try:
+            return parse_json_loose(text)
+        except Exception as e:
+            last_exc = e
+            log.warning("%s parse failed (attempt %d/2): %s; text=%s",
+                        what, attempt + 1, e, str(text)[:500])
+            continue
+    assert last_exc is not None
+    raise last_exc
 
 def list_objects(before_frames: list, after_frames: list, concepts=None) -> list[dict]:
     """Inventory objects from keyframes of both videos, or honour override."""
@@ -30,12 +67,13 @@ def list_objects(before_frames: list, after_frames: list, concepts=None) -> list
         content.append(text_part(f"BEFORE frame {i}")); content.append(image_part(p))
     for i, p in enumerate(after_frames):
         content.append(text_part(f"AFTER frame {i}")); content.append(image_part(p))
-    text = _call(content)
     try:
-        data = parse_json_loose(text)
+        data = _call_json(content, what="list_objects")
         objs = data.get("objects", []) if isinstance(data, dict) else data
     except Exception as e:
-        log.warning("inventory parse failed: %s; text=%s", e, text[:500]); objs = []
+        log.warning("inventory parse failed: %s", e); objs = []
+    if not isinstance(objs, (list, tuple)):
+        objs = []
     clean = []
     for o in objs[:12]:
         if isinstance(o, dict) and o.get("concept"):
@@ -73,12 +111,15 @@ def judge_moved(concept: str, before_img, after_img, before_box=None, after_box=
         crop_path = _crop(src, box, tmp / f"{safe}_{name}.jpg")
         if crop_path:
             content.append(text_part(label)); content.append(image_part(crop_path))
-    text = _call(content, max_tokens=1000)
     try:
-        d = parse_json_loose(text)
+        d = _call_json(content, max_tokens=1000, what=f"judge_moved {concept}")
+        if not isinstance(d, dict):
+            raise ValueError("empty text, cannot parse JSON" if not d else "parsed JSON is not an object")
         return {"moved": bool(d.get("moved")), "confidence": float(d.get("confidence", 0.0)), "reason": str(d.get("reason", ""))}
     except Exception as e:
         log.warning("judge_moved parse failed for %s: %s", concept, e)
+        if "empty" in str(e).lower():
+            return {"moved": False, "confidence": 0.0, "reason": "no response"}
         return {"moved": False, "confidence": 0.0, "reason": "unparseable Spark response"}
 
 def write_claims(diff_table, moved_verdicts=None) -> dict:
@@ -92,9 +133,10 @@ def write_claims(diff_table, moved_verdicts=None) -> dict:
         "Return STRICT JSON only: {\"summary\": \"str\", \"claims\": [{\"concept\": \"str\", "
         "\"change\": \"added|removed|moved\", \"explanation\": \"str\", \"safety_note\": \"str or null\"}]}. "
         "safety_note: a short caregiver/rental-relevant note or null.\nDATA:\n" + _json.dumps(payload, default=str))]
-    text = _call(content)
     try:
-        d = parse_json_loose(text)
+        d = _call_json(content, what="write_claims")
+        if not isinstance(d, dict):
+            raise ValueError("empty text, cannot parse JSON" if not d else "parsed JSON is not an object")
         claims = []
         for c in d.get("claims", []):
             if c.get("concept") and c.get("change") in ("added", "removed", "moved"):
@@ -102,5 +144,5 @@ def write_claims(diff_table, moved_verdicts=None) -> dict:
                                "explanation": str(c.get("explanation", "")), "safety_note": c.get("safety_note")})
         return {"summary": str(d.get("summary", "")), "claims": claims}
     except Exception as e:
-        log.warning("write_claims parse failed: %s; %s", e, text[:500])
+        log.warning("write_claims parse failed: %s", e)
         return {"summary": "", "claims": []}

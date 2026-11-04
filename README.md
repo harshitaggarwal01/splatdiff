@@ -91,7 +91,7 @@ Outputs land in `outputs/<run_id>/`: `result.json`, `report.md`, annotated `befo
 
 ## Cost per run
 
-Measured on the synthetic pair above: a fresh (uncached) run took **~110 s and ~$0.30** — 24 SAM 3.1 video requests × 50 billed frames (the per-request minimum) + ~11 Muse Spark 1.3 calls + 6–18 SAM 3.1 image re-checks. A cached re-run took **25 s** (Responses calls are disk-cached in `cache/responses/`; set `SPLATDIFF_NO_CACHE=1` to disable). List prices behind this: Spark $1.25/M input, $4.25/M output tokens; SAM $0.20 per 1000 video frames (min 50/request), $2.50 per 1000 images. Every call is appended to `cache/costs.jsonl`.
+Measured on the synthetic pair above (run 2, fresh/uncached, moved-judge calls in parallel): **56 s and $0.33** — 23 SAM 3.1 video requests × 50 billed frames ($0.23) + 18 SAM 3.1 image re-checks ($0.045) + 12 Muse Spark 1.3 calls ($0.056). A cached re-run took **25 s** (Responses calls are disk-cached in `cache/responses/`; set `SPLATDIFF_NO_CACHE=1` to disable). List prices behind this: Spark $1.25/M input, $4.25/M output tokens; SAM $0.20 per 1000 video frames (min 50/request), $2.50 per 1000 images. Every call is appended to `cache/costs.jsonl`.
 
 ## How this was built
 
