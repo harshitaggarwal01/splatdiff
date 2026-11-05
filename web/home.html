@@ -299,35 +299,82 @@
     <p class="numbers-note">A smoke test, not a benchmark &mdash; real-room recall is still untested. We would rather show you one small true number than a large vague one. A fresh check on the sample pair takes about a minute and about <span class="mono">$0.33</span>; past checks replay free from cache. The sample pair is pans over AI-generated stills; real, cluttered rooms are the next test.</p>
   </section>
 
-  <!-- What's next -->
-  <section class="home-section" aria-labelledby="next-heading">
-    <h2 id="next-heading" class="section-heading">What&rsquo;s next</h2>
-    <ul class="next-list">
-      <li><strong>Live capture from glasses he already wears.</strong> Meta&rsquo;s Wearables Device Access Toolkit, with last-seen memory for keys and glasses &mdash; the strongest glasses use.</li>
-      <li><strong>Frames that never leave home.</strong> Self-hosted open-weight Meta models &mdash; Muse Spark Open and SAM &mdash; on a home box.</li>
-      <li><strong>The family agent in WhatsApp.</strong> Meta AI where families already talk; still words only.</li>
-      <li><strong>Route checks, not just rooms.</strong> Bed &rarr; hallway &rarr; bathroom in one walkthrough, including a night-light check.</li>
-      <li><strong>Reach, not just presence.</strong> SAM masks and depth to estimate whether the walker is within arm&rsquo;s length.</li>
-      <li><strong>An OT setup mode.</strong> The occupational therapist films and signs the safe baseline at discharge.</li>
-      <li><strong>Tested in real homes.</strong> A small study with OTs and families, with recall on cluttered rooms first.</li>
-    </ul>
-    <div class="hero-actions">
+  <!-- Where Second Look goes next -->
+  <section class="home-section future-section" aria-labelledby="future-heading">
+    <h2 id="future-heading" class="section-heading">Where Second Look goes next</h2>
+    <p class="future-intro">Built tonight as a working check; here is the road from demo to something families rely on &mdash; and the lines it won&rsquo;t cross.</p>
+
+    <div class="horizons">
+      <div class="horizon">
+        <h3 class="horizon-label">Next three months</h3>
+        <ul class="horizon-list">
+          <li><strong>Tested in real homes</strong>A small study with OTs and families; recall on cluttered rooms first, because a missed walker matters more than a false alarm.</li>
+          <li><strong>An OT setup mode</strong>The occupational therapist films and signs the safe baseline at discharge and exports a one-page care-plan card.</li>
+          <li><strong>An aide mode</strong>A 15-second guided route, one button, the aide named on the feed, agency consent built in.</li>
+          <li><strong>Someone owns each alert</strong>Family replies &ldquo;I&rsquo;ll do it&rdquo; or &ldquo;I can&rsquo;t&rdquo;; anything still moved next visit is raised again.</li>
+        </ul>
+      </div>
+      <div class="horizon">
+        <h3 class="horizon-label">Within a year</h3>
+        <ul class="horizon-list">
+          <li><strong>Live capture from glasses</strong>Meta&rsquo;s Wearables Device Access Toolkit; Dad wears the camera, so nobody films him.</li>
+          <li><strong>Where did I leave it?</strong>Automatic last-seen memory for keys, glasses and the walker &mdash; always &ldquo;last seen at&hellip;&rdquo;, never a guess.</li>
+          <li><strong>Reach, not just presence</strong>SAM masks and depth to tell whether the walker is within arm&rsquo;s length of the bed.</li>
+          <li><strong>Route and night checks</strong>Bed &rarr; hallway &rarr; bathroom in one walkthrough, with the night-light on.</li>
+        </ul>
+      </div>
+      <div class="horizon">
+        <h3 class="horizon-label">Further out</h3>
+        <ul class="horizon-list">
+          <li><strong>Frames that never leave home</strong>Self-hosted open-weight Meta models &mdash; Muse Spark Open, Muse Glimmer, SAM &mdash; on a small home box; only words leave.</li>
+          <li><strong>The family agent in WhatsApp</strong>Meta AI where families already talk; still words only.</li>
+          <li><strong>Fall alerts from any sensor</strong>Watch, pendant or radar raise an &ldquo;Are you OK?&rdquo; first, then a words-only alert &mdash; partners, not our hardware.</li>
+          <li><strong>In his own language</strong>Voice notes and updates in the language Dad speaks, with each speaker kept apart.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="future-block">
+      <h3 class="future-subheading">What it should feel like, a year from now</h3>
+      <div class="stories">
+        <figure class="story">
+          <blockquote>&ldquo;I read Sunday&rsquo;s check on the train and knew exactly what to ask Maya to move.&rdquo;</blockquote>
+          <figcaption>Priya, four hours away</figcaption>
+        </figure>
+        <figure class="story">
+          <blockquote>&ldquo;Fifteen seconds at the door, one button, and my name on the feed &mdash; not my face.&rdquo;</blockquote>
+          <figcaption>Maya, the aide (45 minutes a visit)</figcaption>
+        </figure>
+        <figure class="story">
+          <blockquote>&ldquo;If I moved the lamp to read, it says so. And it tells me where I left my glasses.&rdquo;</blockquote>
+          <figcaption>Dad, 82</figcaption>
+        </figure>
+        <figure class="story">
+          <blockquote>&ldquo;I film the safe setup once; the family checks against my plan, not their memory.&rdquo;</blockquote>
+          <figcaption>An OT at discharge</figcaption>
+        </figure>
+      </div>
+      <p class="stories-note">Illustrative stories &mdash; the people we are designing for, not testimonials.</p>
+    </div>
+
+    <div class="future-block">
+      <h3 class="future-subheading">The same engine elsewhere</h3>
+      <p class="elsewhere-line">Home-care agencies between visits &middot; assisted-living room checks &middot; recovery at home after surgery &middot; low-vision independence with glasses &middot; rental move-in and move-out &middot; insurance inventories that update themselves &middot; shared labs and classrooms.</p>
+      <p class="future-coda">Two walkthroughs in, proven changes out.</p>
+    </div>
+
+    <div class="future-block never">
+      <h3 class="future-subheading">What it will never do</h3>
+      <ul class="never-list">
+        <li>Diagnose Dad or score his health.</li>
+        <li>Watch continuously or film anyone who hasn&rsquo;t agreed.</li>
+        <li>Say he took his pills &mdash; only where they were last seen, and to check.</li>
+      </ul>
+    </div>
+
+    <div class="hero-actions future-actions">
       <a class="btn btn-primary" href="/glasses">Try the glasses simulation</a>
     </div>
-  </section>
-
-  <!-- Where else it helps -->
-  <section class="home-section" aria-labelledby="elsewhere-heading">
-    <h2 id="elsewhere-heading" class="section-heading">Where else it helps</h2>
-    <ul class="where-list">
-      <li>Home-care agencies between visits</li>
-      <li>Assisted-living room checks</li>
-      <li>Post-surgery home setup</li>
-      <li>Rental move-in and move-out</li>
-      <li>Insurance home inventories that update themselves</li>
-      <li>Shared labs and classrooms (equipment drift)</li>
-    </ul>
-    <p class="big-line">Same engine: two walkthroughs in, proven changes out.</p>
   </section>
 
   <!-- FAQ -->
