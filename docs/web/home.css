@@ -95,6 +95,32 @@ a.btn-primary { color: #fff; }
 
 .hero-note { color: var(--ink-2); font-size: .9rem; margin: 16px 0 0; }
 
+/* ---------- Capability list ---------- */
+
+.capability-list {
+  list-style: none;
+  margin: 28px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0 32px;
+  max-width: 760px;
+}
+.capability-list li {
+  border-top: 1px solid var(--rule);
+  padding: 12px 0;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+.capability-list li:last-child { border-bottom: 1px solid var(--rule); }
+.capability-list strong { color: var(--ink); font-weight: 600; }
+
+@media (min-width: 900px) {
+  .capability-list { grid-template-columns: 1fr 1fr; }
+  .capability-list li:last-child { border-bottom: none; }
+  .capability-list li:nth-last-child(-n+2) { border-bottom: 1px solid var(--rule); }
+}
+
 .hero-plates {
   display: grid;
   grid-template-columns: 1fr;
