@@ -1,19 +1,18 @@
-# Second Look — 3-minute demo script (final)
+# Second Look — demo video (as submitted)
 
-Total: 3:00 maximum. One jargon phrase to keep: "grounded or dropped." Label every simulation as a simulation, on screen and out loud. Tip: replay a Past check for the strike so the ink-strike lands on cue.
+Final cut: **2:27, 1920×1080**, narrated by Harshit, captions burned in. Built with `scripts/demo/` (see README, *How the demo video was made*). Scene cuts follow the narration's phrase timestamps from Muse Voice Transcribe.
 
-**0:00–0:20 — Hook, on the lamp.** Open on the finished report, floor lamp finding highlighted. "Last month this lamp stood by Dad's bed, where he reads. This month it's across the room — and nobody noticed. His daughter filmed the room twice. Watch what drifted — and watch one claim get struck, because we couldn't prove it."
+| Time | On screen | Narration |
+|---|---|---|
+| 0:00–0:17 | Product page hero | "Hi, my name is Harshit, and this is my submission for the hackathon. Last month Dad's room was set up safe after his hospital stay. This month things have moved, and nobody noticed. Second Look tells you what changed in his room — with proof." |
+| 0:17–0:28 | How it works | "Film a twenty-second walkthrough on each visit. It blurs people and papers, finds every object, proves each change, and tells the family." |
+| 0:28–0:39 | Try it now — sample room, watchlist | "Here's a sample room. The watchlist is what must stay put — the walker, the lamp, the bag. Type it, or just say it." |
+| 0:39–1:01 | Live check (sped ~1.5×) | "Four Meta models work together. SAM 3.1 tracks every object through both videos. Muse Spark takes the inventory and judges what moved. When SAM didn't know the word walker, Spark taught it 'metal walking frame'. Muse Wonder gives a second opinion on borderline calls." |
+| 1:01–1:14 | Report — needs attention, evidence, do this next | "Three things need attention. Every finding shows its evidence — the same lamp, before and after — and ends in plain steps. Ask Dad first." |
+| 1:14–1:23 | Still of the 7:20 PM check: "Dad says: 'I moved the lamp so I can read by my chair'" | "And Dad has a say. When he said he moved the lamp to read by his chair, it was marked as his choice, not an alarm." |
+| 1:23–1:42 | Real lab footage — chair moved kept, trash bin struck | "This one is real — a lab I filmed tonight. The chairs were pulled into the aisle, and it caught that. It also thought a trash bin appeared, but the first video never showed that corner, so the claim is struck, with the reason. If we can't show where we saw it, we don't say it." |
+| 1:42–1:58 | Family feed — ask, write an update for Dad (sped ~2×) | "Family far away get words, never pictures — live. They can ask, 'Where was his walker last seen?' and get an answer with the check it came from. It can even write the update for Dad — to him, not about him." |
+| 1:58–2:14 | In his glasses (simulation) | "Next: the same check from his own glasses. He wears the camera, so nobody films him. It whispers where his walker is and remembers where he left things. This is a simulation running the real models." |
+| 2:14–2:27 | Close — what it will never do | "It will never diagnose Dad, watch him continuously, or claim he took his pills. Four Meta models, about thirty cents a check. Second Look." |
 
-**0:20–0:45 — Struck-claim hero (done by 0:45).** The armchair claim, struck through. "The AI said an armchair had appeared. It hadn't. SAM's image re-check found it in the first video — confidence 0.75 — and the claim was struck, reason shown, before it reached the family. That's the whole product: if we can't show where we saw it, we don't say it." Small on-screen label: "Synthetic test room — real cluttered rooms untested."
-
-**0:45–1:00 — Founder answer.** To camera, plainly: "People ask why the daughter doesn't just look. Because **the person who visits isn't always the person who worries.** She films for twenty seconds; her brother three hundred miles away gets the same receipts she does. And nobody — nobody — remembers exactly where the walker stood three weeks ago."
-
-**1:00–1:35 — Live check, compressed.** `/app`: room Bedroom, saved baseline already there, record/upload the new walkthrough, hit Check. Compress the live stages (privacy blur — "people and papers blurred before anything is stored or sent on; two documents blurred on this sample" — coverage 0.9, tracking). Slow down once: "SAM didn't know the word 'walker.' Spark taught it 'metal walking frame' — found, 0.875. One model reasons; one proves." Land on the report: Needs-attention banner, floor clutter checked, **Do this next** — "ask Dad first" — **Mark as sorted**.
-
-**1:35–1:55 — Dad's own words.** Play the spoken care note / room narration. Transcription with diarization separates Dad's voice: *"I moved the lamp so I can read by my chair."* The lamp finding flips to **his choice — low risk**. "That's not drift. That's Dad, in his own words, and the report treats it that way. His words outrank our inference."
-
-**1:55–2:20 — Family feed, live.** Switch to `/family` on a second screen/phone. The check lands live over SSE — words only, never pictures. Tap **Ask about Dad's room**: "Was the lamp seen where it was?" Answer with citation, in "seen where it was" language. Then **Write an update for Dad** — show the draft: written *to* him, not about him. ("Far away" variant in one glance if time is short.) Optional 5-second beat, labelled SIMULATED: a fall alert from a watch lands on the feed after an "Are you OK?" check-in. "Glasses are a poor fall sensor — off at night, head motion isn't a fall. That's partner territory; this is simulated."
-
-**2:20–2:40 — Glasses simulation (20 s, labelled SIMULATION).** `/glasses`, on-screen banner: SIMULATION — DAD'S POINT OF VIEW. Real SAM 3.1 per frame, ~0.9 s. The whisper: *"Walker — on your left, close."* Then switch to the **"Where did I leave it?"** tab: "Where are my keys?" → "Last seen 6:04 pm on the kitchen table — not seen since." Say it plainly: "A simulation on a laptop today. Live streaming through Meta's Wearables Device Access Toolkit is roadmap — not built, and we're not pretending otherwise."
-
-**2:40–3:00 — Close.** Back to the struck claim, one beat. "On one synthetic room, over three-plus runs, the raw model invented a quarter to two-fifths of its claims. Grounding struck every one — a smoke test, not a benchmark; real rooms are next. A fresh check: about a minute, about thirty cents. **Second Look is Dad's second memory: it remembers where his walker stood, what drifted, and what Dad himself chose to move — and if we can't show where we saw it, we don't say it.**"
+A captioned version without narration (2:59, every scene at normal speed) was also produced from the same recording.

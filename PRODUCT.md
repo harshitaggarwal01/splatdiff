@@ -13,10 +13,10 @@ SplatDiff is the engine codename from the author's earlier 3D-scene research; th
 - **Expansion:** siblings rotating visits, and a home aide between family visits who films a short walkthrough so siblings get the diff remotely — the best retention story, but it requires Dad to accept someone else filming, so it is not the opener.
 - The same engine applies to rental move-out inspections in one line only; it is a different buyer and is not the pitch.
 
-Nobody films two walkthroughs on day one, and nobody does routine ambient filming unprompted. The trigger is a scare, a discharge, or a new aid. Value starts at visit #2, so onboarding sells the baseline: "Film today's safe room. Next visit, we show you what drifted."
+Nobody films two walkthroughs on day one, and nobody does routine ambient filming unprompted. The trigger is a scare, a discharge, or a new aid. Value starts at visit #2, so onboarding sells the baseline: "Film today's safe room. Next visit, we show you what changed."
 
 ## Why it matters
-Falls are common among older adults (CDC: about 1 in 4 adults over 65 fall each year), and home hazards are a modifiable risk factor. Slow drift goes unnoticed: a walker pushed out of reach, clutter on the floor, a lamp moved away from the bed. Drift can create hazards — we do not claim we reduce falls. Falls are driven mainly by strength and balance, medications, vision and blood pressure; home hazards are one factor, and an OT assessment remains the gold standard. Families need a calm, honest answer, not an AI guess.
+Falls are common among older adults (CDC: about 1 in 4 adults over 65 fall each year), and home hazards are a modifiable risk factor. Slow changes go unnoticed: a walker pushed out of reach, clutter on the floor, a lamp moved away from the bed. Those changes can create hazards — we do not claim we reduce falls. Falls are driven mainly by strength and balance, medications, vision and blood pressure; home hazards are one factor, and an OT assessment remains the gold standard. Families need a calm, honest answer, not an AI guess.
 
 What families do today: eyeballing on arrival, phone calls, a cleaner's texts, photos to siblings, a paper checklist — or reactive fall detection (watches, pendants, radar) that acts after a fall. Encircle and Sortly catalog a room but do not diff two visits; that visit-to-visit diff, grounded or struck, is the moat.
 
@@ -25,7 +25,7 @@ What families do today: eyeballing on arrival, phone calls, a cleaner's texts, p
 - **Calm over alarm:** findings are triaged by risk in plain language, and every HIGH finding ends in a next step, not just an alarm.
 - **The family's words:** a care watchlist, typed or spoken, decides what matters most.
 - **Presence is not safety:** "seen where it should be" never claims reachable, unblocked or working. `not_seen` means "we couldn't confirm it in this video — check before you worry," never missing and never safe.
-- **False negatives matter more than false positives:** a struck false claim is charming; a silent missed "walker moved" is the catastrophic error. Recall on real cluttered rooms is untested, and we say so.
+- **False negatives matter more than false positives:** a struck false claim is charming; a silent missed "walker moved" is the catastrophic error. Recall on real cluttered rooms is not yet measured (one real pair so far), and we say so.
 - **Consent per visit:** ask together, film together. No installed camera, nothing recording between visits. Only film rooms Dad is happy to share.
 
 ## The loop after a finding
@@ -36,9 +36,9 @@ A report that ends at detection is a demo; the loop ends at resolution. Every HI
 
 Second Look is not a medical device. It reports room changes; it does not assess a person's health or replace a professional safety assessment.
 
-## Meta models — 3 run it, 2 built it
-- **Run it:** `muse-spark-1.3` reasons (inventory, aliases, moved judge, report), `sam-3.1` proves (video tracking, image re-check), `muse-voice-transcribe-1.0` listens (spoken care notes, ~2.3 s for a 10 s note).
-- **Built it:** `muse-image-1.0` made the scoreable synthetic test room (backpack removed, floor lamp moved, red suitcase added); `muse-wonder-1.0` generated the codebase over ~13 reviewed generation rounds with parallel workers, plus the red-team critique round in `build_log/`.
+## Meta models — 4 run it, 2 built it
+- **Run it:** `muse-spark-1.3` reasons (inventory, aliases, moved judge, report), `sam-3.1` proves (video tracking, image re-check), `muse-voice-transcribe-1.0` listens (spoken care notes with diarization, ~2.3 s for a 10 s note), `muse-wonder-1.0` gives second opinions on borderline "moved" calls and a trend across visits.
+- **Built it:** `muse-image-1.0` made the scoreable synthetic test room (backpack removed, floor lamp moved, red suitcase added); `muse-wonder-1.0` generated the codebase over 30 reviewed generation rounds with up to 5 parallel workers; Muse Wonder and Muse Spark wrote 6 red-team critiques (`build_log/`).
 - **Verified dependencies:** SAM returned nothing for "walker"; Spark's alias "metal walking frame" let SAM find it at c=0.875. SAM video tracking missed the armchair in the before clip; its image re-check found it at c=0.75 and the false "armchair added" claim was struck.
 
 ## Honest evidence position
