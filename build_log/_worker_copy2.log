@@ -1,0 +1,5 @@
+done in 31s, 39764 chars, usage={'input_tokens': 21283, 'input_tokens_details': {'cached_tokens': 0}, 'output_tokens': 11944, 'output_tokens_details': {'reasoning_tokens': 1322}, 'total_tokens': 33227}
+wrote:
+  web/home.html
+  web/index.html
+  VIDEO_SCRIPT.md

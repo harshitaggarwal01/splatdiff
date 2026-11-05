@@ -1103,21 +1103,21 @@ function doNextSteps(kind, conceptRaw) {
   const k = String(kind || "").toLowerCase();
   if (k === "moved") {
     return [
-      "Put the " + concept + " back where it was set up, within reach.",
-      "Ask Dad to show you he can reach it.",
+      "Ask Dad first: did he move the " + concept + " on purpose? If so, that is the new setup — film it as the next baseline.",
+      "If not, whoever is there puts it back where it was set up, with Dad. Far away? Send this to someone local — never ask Dad to move furniture alone.",
       "Next visit, film this corner again — Second Look will confirm it is back.",
     ];
   }
   if (k === "removed" || k === "missing") {
     return [
-      "Find the " + concept + " and put it back where Dad expects it.",
-      "If it was taken away on purpose, update the watchlist.",
+      "Ask Dad where the " + concept + " is, then put it back where he expects it.",
+      "If it was taken away on purpose, take it off the watchlist.",
       "Re-check next visit.",
     ];
   }
   if (k === "added" || k === "appeared") {
     return [
-      "If the " + concept + " is on the floor or in a walkway, move it out of the path.",
+      "If the " + concept + " is on the floor or in a walkway, move it out of the path, with Dad.",
       "Check the route from bed to bathroom is clear.",
       "Re-check next visit.",
     ];

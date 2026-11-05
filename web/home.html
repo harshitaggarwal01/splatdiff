@@ -35,7 +35,7 @@
         <a class="btn btn-primary btn-large" href="/app?sample=1">Try it now</a>
         <a class="btn btn-large" href="/app">Use your own videos</a>
       </div>
-      <p class="hero-note">No account. No hardware. About a minute and about <span class="mono">$0.33</span> per check.</p>
+      <p class="hero-note">No account. No hardware. On our sample room a check took about a minute and about <span class="mono">$0.33</span>.</p>
     </div>
 
     <div class="hero-plates">
@@ -48,7 +48,7 @@
         <figcaption>Today &mdash; floor lamp moved</figcaption>
       </figure>
     </div>
-    <p class="hero-caption">These are real SAM 3.1 boxes from a test run &mdash; the same evidence plates the report itself shows.</p>
+    <p class="hero-caption">Real SAM 3.1 boxes, drawn on our synthetic test room.</p>
   </section>
 
   <!-- Why this matters -->
@@ -68,7 +68,7 @@
 
   <!-- Three steps -->
   <section class="home-section" aria-labelledby="steps-heading">
-    <h2 id="steps-heading" class="section-heading">Three steps, one minute</h2>
+    <h2 id="steps-heading" class="section-heading">Three steps. The check takes about a minute.</h2>
     <ol class="steps">
       <li class="step">
         <div class="step-body">
@@ -79,7 +79,7 @@
       <li class="step">
         <div class="step-body">
           <h3 class="step-title">Film again next visit</h3>
-          <p>The same slow pan, a few weeks later. A different angle is fine &mdash; the comparison allows for a changed viewpoint.</p>
+          <p>The same slow pan from the doorway, lights on, bed-to-bathroom path included. The same corners matter more than the same angle &mdash; if we can&rsquo;t see something, we say not seen, never missing.</p>
         </div>
       </li>
       <li class="step">
@@ -89,7 +89,7 @@
         </div>
       </li>
     </ol>
-    <p class="steps-note">Nothing to install. No account. Works with any phone video.</p>
+    <p class="steps-note">Nothing to install. No account. Any phone, 15&ndash;30 seconds, lights on.</p>
   </section>
 
   <!-- Receipts -->
@@ -115,12 +115,13 @@
     </div>
   </section>
 
-  <!-- Alerts that lead to action -->
+  <!-- Findings that lead to action -->
   <section class="home-section" aria-labelledby="alerts-heading">
     <div class="two-col">
       <div>
-        <h2 id="alerts-heading" class="section-heading">Alerts that lead to action</h2>
+        <h2 id="alerts-heading" class="section-heading">Findings that lead to action</h2>
         <p>High-risk findings surface first, gathered in a &ldquo;Needs attention&rdquo; banner at the top of the report &mdash; a walker out of reach outranks a moved plant. Every high or medium finding ends in &ldquo;Do this next&rdquo;: plain steps, such as moving the walker back within arm&rsquo;s reach of the bed and asking Dad to show you he can reach it.</p>
+        <p>Who should move it back? Only someone who is there, with Dad. If you are far away, send the report to someone local or the care team &mdash; never ask Dad to move furniture alone at night.</p>
         <p>Done it? Mark it as sorted. The item stays on your watchlist and is checked again on the next visit; if it has drifted again, it comes back. And the summary is easy to share &mdash; text, email, or print for the care folder &mdash; so siblings who were not there see the same evidence.</p>
       </div>
       <div class="section-aside">
@@ -145,7 +146,7 @@
     <h2 id="privacy-heading" class="section-heading">Private by design</h2>
     <div class="privacy-grid">
       <p>There is no installed camera and nothing recording between visits. Filming is deliberate, per visit &mdash; ideally with Dad, of rooms he is happy to share.</p>
-      <p>Clips are sent to Meta&rsquo;s model API only to find objects, using the standard model IDs &mdash; not the contributor mode that permits training on your data. There are no accounts, no ads and no tracking scripts on this page or in the app.</p>
+      <p>Clips are sent to Meta&rsquo;s model API only to find objects, using the standard model IDs (<span class="mono">muse-spark-1.3</span>, not <span class="mono">muse-spark-1.3-contributor</span> &mdash; see the code). There are no accounts, no ads and no analytics or ad scripts on this page or in the app.</p>
       <p>The API key stays on the server, never in the browser. Reports and frames are stored on the machine running Second Look (in its <span class="mono">outputs/</span> folder), under your control. The code is open source, so anyone can check all of this.</p>
     </div>
     <p class="device-note">Not a medical device &mdash; it reports room changes, not health.</p>
@@ -158,6 +159,7 @@
         <h2 id="who-heading" class="section-heading">Who it is for</h2>
         <p class="lead-line">The daughter after Dad&rsquo;s hospital discharge.</p>
         <p>The OT said: walker next to the bed, lamp within reach, path clear. She films that approved setup on discharge day, and on her next visit she gets a calm answer instead of trying to remember exactly where the lamp stood.</p>
+        <p><strong>Dad&rsquo;s say:</strong> It is his home. Second Look flags change; Dad and the family decide what is unsafe. If he moved the lamp to read by his chair, that is the new setup, not drift.</p>
       </div>
       <div class="section-aside aside-list">
         <p>Home-care nurses and OTs at follow-ups, with a printed report for the care record.</p>
@@ -204,7 +206,7 @@
   <section class="home-section" aria-labelledby="numbers-heading">
     <h2 id="numbers-heading" class="section-heading">Honest numbers</h2>
     <p class="big-line numbers-line">On our one scoreable test room (3 runs), the raw model invented claims 25&ndash;40% of the time; grounding struck every one.</p>
-    <p class="numbers-note">A smoke test, not a benchmark &mdash; real-room recall is still untested. We would rather show you one small true number than a large vague one. A fresh check on the sample pair takes about a minute and about <span class="mono">$0.33</span>; past checks replay free from cache.</p>
+    <p class="numbers-note">A smoke test, not a benchmark &mdash; real-room recall is still untested. We would rather show you one small true number than a large vague one. A fresh check on the sample pair takes about a minute and about <span class="mono">$0.33</span>; past checks replay free from cache. The sample pair is pans over AI-generated stills; real, cluttered rooms are the next test.</p>
   </section>
 
   <!-- FAQ -->
@@ -242,6 +244,7 @@
   <section class="final-cta" aria-labelledby="final-heading">
     <h2 id="final-heading" class="final-heading">Take a second look</h2>
     <p class="final-sub">Start with the sample room &mdash; a known room with a known answer &mdash; and watch one claim get struck.</p>
+    <p class="final-sub">We don&rsquo;t watch Dad. We remember the room, so you can visit as his family, not his inspector.</p>
     <div class="hero-actions final-actions">
       <a class="btn btn-primary btn-large" href="/app?sample=1">Try it now</a>
       <a class="btn btn-large" href="https://github.com/harshitaggarwal01/splatdiff">View the code on GitHub</a>
