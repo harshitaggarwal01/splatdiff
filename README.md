@@ -1,5 +1,8 @@
 # Second Look — What changed in Dad's room?
 
+**Live demo:** https://harshitaggarwal01.github.io/splatdiff/ — static on GitHub Pages. *Try it now* replays a real recorded check; your own videos, voice notes, the family agent and the glasses view ask for **your own Meta API key**, kept in that browser tab only and sent only to api.meta.ai. The full server version runs with `python server.py`.
+
+
 Second Look compares two short phone walkthroughs of the same room — a BEFORE and an AFTER — and reports which objects were **added**, **removed**, or **moved**. Every kept finding is backed by SAM 3.1 detections (boxes, frame ids, confidences). Any claim the reasoning model makes that SAM evidence does not support is **dropped and shown as dropped**, struck through with the reason, in a section called "Struck from the report".
 
 SplatDiff is the engine codename from the author's earlier 3D-scene research; this product uses no Gaussian splats.
