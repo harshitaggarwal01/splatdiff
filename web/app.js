@@ -696,7 +696,7 @@ async function loadSample() {
       renderTags(null);
     }
     els.sampleNote.hidden = false;
-    els.sampleNote.textContent = "Synthetic test room made with Muse Image, so every result can be scored. Real, cluttered rooms are the next test.";
+    els.sampleNote.textContent = "Synthetic test room made with Muse Image, so every result can be scored. For a real room, open Past checks: a computer lab filmed on a phone.";
     updateRunButton();
     els.runBtn.focus();
   } catch (err) {
