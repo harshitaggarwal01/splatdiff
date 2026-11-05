@@ -48,6 +48,10 @@
         </div>
         <div class="masthead-right">
           <time class="today mono" id="todayDate" datetime=""></time>
+          <a class="btn btn-quiet" href="/family">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Family feed
+          </a>
           <button type="button" class="btn btn-quiet" id="historyBtn" aria-expanded="false" aria-controls="historyDrawer">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
             Past checks
@@ -75,8 +79,35 @@
 
         <p class="field-help">Film the same route both times: start at the door, pan slowly to the bed, then along the path to the bathroom door. Lights on; keep each watchlist item in view for two seconds.</p>
 
+        <div class="intake-fields">
+          <div class="intake-field">
+            <label class="field-label" for="roomInput">Room</label>
+            <input type="text" id="roomInput" class="text-input" list="roomList" value="Bedroom" autocomplete="off" spellcheck="false" aria-describedby="roomHelp">
+            <datalist id="roomList">
+              <option value="Bedroom"></option>
+              <option value="Hallway"></option>
+              <option value="Bathroom"></option>
+              <option value="Kitchen"></option>
+              <option value="Living room"></option>
+            </datalist>
+            <p class="field-help" id="roomHelp">Which room are you checking?</p>
+          </div>
+          <div class="intake-field">
+            <label class="field-label" for="filmedByInput">Filmed by</label>
+            <input type="text" id="filmedByInput" class="text-input" autocomplete="name" spellcheck="false" placeholder="e.g. Maya, the aide">
+            <p class="field-help">Who filmed today&rsquo;s walkthrough? Named on the family feed.</p>
+          </div>
+        </div>
+
+        <div class="baseline-row" id="baselineRow" hidden>
+          <label class="check-row" for="baselineCheck">
+            <input type="checkbox" id="baselineCheck" checked>
+            <span><span id="baselineLabel">Compare with the saved setup</span><span class="baseline-note" id="baselineNote"></span></span>
+          </label>
+        </div>
+
         <div class="drop-grid">
-          <div class="dropzone-wrap">
+          <div class="dropzone-wrap" id="wrapBefore">
             <div class="dropzone" id="dropBefore" data-side="before" tabindex="0" role="button"
                  aria-label="Choose the video from the last visit" aria-describedby="dropBeforeHint">
               <input type="file" id="fileBefore" accept="video/*" class="file-input" tabindex="-1" aria-hidden="true">
@@ -89,9 +120,27 @@
               <video class="dropzone-video" id="videoBefore" controls playsinline preload="metadata" hidden></video>
               <span class="dropzone-file mono" id="fileNameBefore" hidden></span>
             </div>
+            <button type="button" class="btn btn-quiet record-btn" id="recordBtnBefore" aria-expanded="false" aria-controls="recordPanelBefore">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+              Record with this phone
+            </button>
+            <div class="record-panel" id="recordPanelBefore" hidden>
+              <div class="record-frame">
+                <video class="record-video" id="camPreviewBefore" autoplay muted playsinline aria-label="Camera preview for the last-visit walkthrough"></video>
+                <p class="record-overlay">Door → bed → bathroom door · lights on</p>
+              </div>
+              <div class="record-controls">
+                <button type="button" class="btn btn-quiet btn-stop" id="camStopBefore">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                  Stop recording
+                </button>
+                <span class="voice-timer mono" id="camTimerBefore" aria-live="polite">0:00</span>
+              </div>
+              <p class="record-status" id="camStatusBefore" role="status" aria-live="polite" hidden></p>
+            </div>
           </div>
 
-          <div class="dropzone-wrap">
+          <div class="dropzone-wrap" id="wrapAfter">
             <div class="dropzone" id="dropAfter" data-side="after" tabindex="0" role="button"
                  aria-label="Choose the video from today" aria-describedby="dropAfterHint">
               <input type="file" id="fileAfter" accept="video/*" class="file-input" tabindex="-1" aria-hidden="true">
@@ -103,8 +152,28 @@
               <video class="dropzone-video" id="videoAfter" controls playsinline preload="metadata" hidden></video>
               <span class="dropzone-file mono" id="fileNameAfter" hidden></span>
             </div>
+            <button type="button" class="btn btn-quiet record-btn" id="recordBtnAfter" aria-expanded="false" aria-controls="recordPanelAfter">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+              Record with this phone
+            </button>
+            <div class="record-panel" id="recordPanelAfter" hidden>
+              <div class="record-frame">
+                <video class="record-video" id="camPreviewAfter" autoplay muted playsinline aria-label="Camera preview for today's walkthrough"></video>
+                <p class="record-overlay">Door → bed → bathroom door · lights on</p>
+              </div>
+              <div class="record-controls">
+                <button type="button" class="btn btn-quiet btn-stop" id="camStopAfter">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                  Stop recording
+                </button>
+                <span class="voice-timer mono" id="camTimerAfter" aria-live="polite">0:00</span>
+              </div>
+              <p class="record-status" id="camStatusAfter" role="status" aria-live="polite" hidden></p>
+            </div>
           </div>
         </div>
+
+        <p class="baseline-active-note" id="baselineActiveNote" role="status" hidden></p>
 
         <p class="pan-note">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r="0.5" fill="currentColor"/></svg>
@@ -159,6 +228,10 @@
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
             Use the sample room
           </button>
+          <label class="check-row keep-media-row" for="keepMediaCheck">
+            <input type="checkbox" id="keepMediaCheck">
+            <span>Keep the videos after the check<span class="field-help keep-media-help">Off: the raw videos are deleted as soon as the check is done.</span></span>
+          </label>
           <p class="consent-note">Film with Dad&rsquo;s knowledge — ideally together. Clips are sent to Meta&rsquo;s model API to find objects.</p>
           <p class="actions-error" id="runError" role="alert" hidden></p>
         </div>
@@ -177,6 +250,9 @@
       <section class="report" id="reportSection" aria-labelledby="reportSummary" hidden>
         <div class="attention-banner" id="attentionBanner" role="region" aria-label="Needs attention" hidden></div>
         <p class="print-header" id="printHeader">Second Look — Room check</p>
+
+        <div class="coverage-panel" id="coveragePanel" role="region" aria-label="Walkthrough coverage" hidden></div>
+        <p class="privacy-line" id="privacyLine" hidden></p>
 
         <h2 class="report-summary" id="reportSummary"></h2>
         <p class="report-stats mono" id="reportStats"></p>
@@ -214,6 +290,15 @@
               <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
               <span id="shareBtnText">Send to family</span>
             </button>
+            <a class="btn btn-quiet" id="reminderLink" href="/api/reminder.ics?room=Bedroom&amp;every=14">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              Remind me to re-film
+            </a>
+            <button type="button" class="btn btn-quiet btn-danger-quiet" id="deleteCheckBtn" aria-describedby="deleteCheckStatus">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              <span id="deleteCheckText">Delete this check</span>
+            </button>
+            <span class="delete-status" id="deleteCheckStatus" role="status" aria-live="polite"></span>
           </div>
         </footer>
       </section>

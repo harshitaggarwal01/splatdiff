@@ -1,0 +1,3 @@
+done in 21s, 21674 chars, usage={'input_tokens': 10751, 'input_tokens_details': {'cached_tokens': 0}, 'output_tokens': 6467, 'output_tokens_details': {'reasoning_tokens': 929}, 'total_tokens': 17218}
+wrote:
+  web/home.html

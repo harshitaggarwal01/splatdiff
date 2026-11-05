@@ -7,16 +7,28 @@ from pathlib import Path
 import cv2
 from . import diff as diffmod
 from .meta_api import total_cost
+from .privacy import redact_image, detect_sensitive
 from .sam import track_concept, segment_image
-from .spark import list_objects, judge_moved, write_claims, suggest_aliases
+from .spark import list_objects, judge_moved, write_claims, suggest_aliases, check_coverage, propose_floor_items
 from .video_io import normalize_video, extract_keyframes, read_frame, draw_box
+from .wonder import analyse_trend, judge_moved_wonder
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger("splatdiff.pipeline")
-COLORS = {"added": (0, 200, 0), "removed": (0, 0, 220), "moved": (0, 140, 255)}
+COLORS = {"added": (0, 200, 0), "removed": (0, 0, 220), "moved": (0, 140, 255), "on_floor": (30, 30, 180)}
 MAX_CONCEPTS = 16
 MAX_REPAIR_CONCEPTS = 6
 REPAIR_MIN_CONF = 0.5
+PRIVACY_NOTE = "People and paper documents were blurred before any frame was stored, shown or sent to the reasoning model."
+ANCHOR_WORDS = diffmod.ANCHOR_WORDS
+FLOOR_MIN_CONF = 0.5
+FLOOR_BOTTOM_FRAC = 0.6
+BRICK_RED = (30, 30, 180)  # BGR brick red
+ESCALATION_MIN_CONF = 0.55
+ESCALATION_MAX_CONF = 0.80  # exclusive
+INTENTIONAL_RISK_REASON = "Dad says he did this on purpose — consider making it the new setup."
+INTENTIONAL_CHANGES = ("moved", "removed", "added", "on_floor")
+FEED_PATH = Path("cache") / "feed.jsonl"
 
 def _safe(s: str) -> str:
     return "".join(c if c.isalnum() else "_" for c in str(s).lower()).strip("_")
@@ -36,6 +48,39 @@ def _clean_list(items) -> list[str]:
         if c:
             out.append(c)
     return out
+
+def _clean_intentional(intentional) -> list[dict]:
+    """Normalise the ``intentional`` kwarg to [{'concept','quote','speaker'}]."""
+    out: list[dict] = []
+    if not intentional:
+        return out
+    if isinstance(intentional, dict):
+        intentional = intentional.get("intentional") or intentional.get("items") or []
+    if isinstance(intentional, str):
+        intentional = [c.strip() for c in intentional.split(",") if c.strip()]
+    for item in intentional or []:
+        if isinstance(item, dict):
+            concept = " ".join(str(item.get("concept", "") or "").strip().lower().split())
+            if not concept:
+                continue
+            out.append({"concept": concept,
+                        "quote": str(item.get("quote", "") or ""),
+                        "speaker": str(item.get("speaker", "") or "unknown") or "unknown"})
+        elif isinstance(item, str) and item.strip():
+            out.append({"concept": " ".join(item.strip().lower().split()), "quote": "", "speaker": "unknown"})
+    return out
+
+def _token_overlap(a: str, b: str) -> int:
+    return len(set(_norm_concept(a).split()) & set(_norm_concept(b).split()))
+
+def _match_intentional(concept: str, intentional_list: list[dict]):
+    """Best token-overlap intentional item for a concept, or None."""
+    best, best_overlap = None, 0
+    for item in intentional_list or []:
+        overlap = _token_overlap(concept, str(item.get("concept", "")))
+        if overlap > best_overlap:
+            best, best_overlap = item, overlap
+    return best if best_overlap > 0 else None
 
 def _dedupe_prepend(priority: list[str], rest: list[str], cap: int = MAX_CONCEPTS) -> list[str]:
     """priority first, then rest; dedupe case-insensitively; cap total."""
@@ -63,7 +108,29 @@ def _find_summary(concept: str, summaries: dict):
     return best_key, best_v
 
 def build_report(result: dict) -> str:
-    lines = ["# SplatDiff — grounded change report", "", result.get("summary") or "", "", "## Kept claims (SAM-grounded)"]
+    lines = ["# Second Look — grounded change report", "", result.get("summary") or ""]
+    if result.get("room") or result.get("filmed_by"):
+        lines += ["", f"Room: {result.get('room') or ''} · Filmed by: {result.get('filmed_by') or 'unknown'}"]
+    cov = result.get("coverage")
+    if isinstance(cov, dict):
+        try:
+            pct = round(float(cov.get("score", 0) or 0) * 100)
+        except Exception:
+            pct = 0
+        if cov.get("ok"):
+            lines += ["", f"Coverage: both walkthroughs covered the same room ({pct}%)."]
+        else:
+            lines += ["", f"Coverage: these two walkthroughs don't cover the same corners ({pct}%). {cov.get('retake_tip','')}"]
+    priv = result.get("privacy")
+    if isinstance(priv, dict):
+        lines += ["", f"Privacy: {priv.get('people_blurred',0)} people and {priv.get('documents_blurred',0)} papers blurred. {priv.get('note','')}"]
+    trend = result.get("trend")
+    if isinstance(trend, dict) and trend.get("trend"):
+        lines += ["", f"Trend across visits: {trend['trend']}"]
+        for item in trend.get("repeat_items") or []:
+            if isinstance(item, dict):
+                lines.append(f"- Repeat item: **{item.get('concept','')}** flagged {item.get('times','?')} of {item.get('of_checks','?')} checks.")
+    lines += ["", "## Kept claims (SAM-grounded)"]
     if result.get("aliases"):
         lines += ["", "## Vocabulary repair (SAM alias tracking)"]
         for concept, info in result["aliases"].items():
@@ -76,7 +143,7 @@ def build_report(result: dict) -> str:
     if not result.get("claims"):
         lines.append("- No grounded changes found.")
     for c in result.get("claims", []):
-        ev = c.get("evidence", {})
+        ev = c.get("evidence", {}) or {}
         try:
             conf_b = float(ev.get("confidence_before", 0) or 0)
         except Exception:
@@ -91,8 +158,17 @@ def build_report(result: dict) -> str:
                      f"conf before={conf_b:.2f} after={conf_a:.2f}]")
         if c.get("risk_reason"):
             lines.append(f"  - Risk: {c.get('risk','')} — {c['risk_reason']}")
+        if isinstance(c.get("intentional"), dict) and c["intentional"].get("quote"):
+            lines.append(f"  - On purpose ({c['intentional'].get('speaker','unknown')}): \"{c['intentional']['quote']}\"")
         if c.get("safety_note"):
             lines.append(f"  - Safety note: {c['safety_note']}")
+    fc = result.get("floor_check")
+    if isinstance(fc, dict) and (fc.get("items") or fc.get("dropped")):
+        lines += ["", "## Floor check"]
+        for it in fc.get("items", []):
+            lines.append(f"- **{it.get('concept','')} — on the floor**: {it.get('where','')} (c={float(it.get('c',0) or 0):.2f})")
+        for d in fc.get("dropped", []):
+            lines.append(f"- ~~{d.get('concept','')}~~ — dropped: {d.get('reason','')}")
     if result.get("watchlist_status"):
         lines += ["", "## Watchlist"]
         for w in result["watchlist_status"]:
@@ -129,25 +205,35 @@ def _best_detection(parsed) -> dict | None:
                 best = {"box": list(box) if box is not None else None, "c": c}
     return best
 
+def _all_detections(parsed) -> list[dict]:
+    """Flat detection list (any confidence) from segment_image output."""
+    out = []
+    if isinstance(parsed, dict):
+        iterable = list(parsed.values())
+    elif isinstance(parsed, (list, tuple)):
+        iterable = [parsed]
+    else:
+        iterable = []
+    for dets in iterable:
+        if isinstance(dets, dict):
+            dets = [dets]
+        for d in dets or []:
+            if not isinstance(d, dict):
+                continue
+            try:
+                c = float(d.get("c", 0) or 0)
+                box = [float(v) for v in (d.get("box") or [])]
+                if len(box) != 4:
+                    continue
+                h = float(d.get("h", 0) or 0); w = float(d.get("w", 0) or 0)
+            except Exception:
+                continue
+            out.append({"box": box, "c": c, "w": w, "h": h})
+    return out
+
 def _run_vocab_repair(summaries: dict, watchlist_list: list, before_norm, after_norm,
                       before_keyframes: list, after_keyframes: list, prog, emit=None,
                       before_tracks: dict | None = None, after_tracks: dict | None = None) -> dict:
-    """Vocabulary repair for concepts SAM found in neither video.
-
-    For each 'not_found' concept (watchlist items first, max 6): ask
-    Spark for alias phrases, test each alias with SAM image segmentation
-    on up to 3 BEFORE + 3 AFTER keyframes (concurrently), and if an alias
-    reaches c >= 0.5 re-run SAM video tracking under the alias. The
-    recomputed summary stays keyed under the ORIGINAL concept name, with
-    summaries[concept]['alias'] set. Skipped entirely (no events) when
-    nothing is not_found.
-
-    Returns dict with keys: aliases, repair_sam_calls, repaired,
-    spark_calls, sam_requests, sam_frames. ``repair_sam_calls`` counts
-    every SAM call made by this stage (image tests + video re-runs);
-    ``sam_requests``/``sam_frames`` count only the video re-runs so the
-    caller can fold them into the run totals.
-    """
     def _emit(ev: dict):
         if emit is not None:
             try:
@@ -164,8 +250,6 @@ def _run_vocab_repair(summaries: dict, watchlist_list: list, before_norm, after_
         return watch_norm.index(n) if n in watch_norm else len(watch_norm)
 
     candidates = [c for c, s in summaries.items() if isinstance(s, dict) and s.get("label") == "not_found"]
-    # Watchlist items first (in watchlist order), then the rest in
-    # summary order; cap at MAX_REPAIR_CONCEPTS.
     candidates = sorted(candidates, key=_priority)[:MAX_REPAIR_CONCEPTS]
     if not candidates:
         return empty
@@ -187,7 +271,6 @@ def _run_vocab_repair(summaries: dict, watchlist_list: list, before_norm, after_
         tried: list[str] = []
         best_alias = None
         best_c = 0.0
-        # (1) Spark alias suggestions.
         spark_calls += 1
         try:
             raw_aliases = suggest_aliases(concept, spark_keyframes)
@@ -201,7 +284,6 @@ def _run_vocab_repair(summaries: dict, watchlist_list: list, before_norm, after_
                 seen.add(alias); tried.append(alias)
         tried = tried[:3]
 
-        # (2) Test each alias on keyframes, concurrently.
         if tried and test_keyframes:
             tasks = [(alias, kf) for alias in tried for kf in test_keyframes]
             per_alias_best: dict[str, float] = {}
@@ -226,13 +308,11 @@ def _run_vocab_repair(summaries: dict, watchlist_list: list, before_norm, after_
                         continue
                     if det is not None and float(det["c"]) > per_alias_best.get(alias, 0.0):
                         per_alias_best[alias] = float(det["c"])
-            # Highest confidence wins; ties keep Spark's earlier suggestion.
             for alias in tried:
                 cval = per_alias_best.get(alias, 0.0)
                 if cval >= REPAIR_MIN_CONF and cval > best_c:
                     best_alias, best_c = alias, float(cval)
 
-        # (3) Re-track under the winning alias, keyed by original concept.
         if best_alias is not None:
             alias_before, alias_after = {}, {}
             try:
@@ -280,15 +360,6 @@ def _run_vocab_repair(summaries: dict, watchlist_list: list, before_norm, after_
 
 def _run_image_rechecks(summaries: dict, before_keyframes: list, after_keyframes: list, prog,
                         emit=None) -> int:
-    """SAM image re-check for added/removed concepts on the 'absent' side.
-
-    Mutates summaries: stores per-concept 'recheck' info and flips the
-    label to 'present_both' when a keyframe detection overturns the
-    video-tracking label. Original label is kept as 'original_label'.
-
-    Emits recheck start/progress/done events (if ``emit`` is given) as
-    each concept finishes. Returns the number of SAM image requests made.
-    """
     def _emit(ev: dict):
         if emit is not None:
             try:
@@ -304,7 +375,6 @@ def _run_image_rechecks(summaries: dict, before_keyframes: list, after_keyframes
     prog(f"SAM image re-check for {len(candidates)} added/removed concept(s)…")
     absent_side = {}
     for concept, s in candidates:
-        # added -> supposedly absent in BEFORE; removed -> absent in AFTER
         absent_side[concept] = "before" if s["label"] == "added" else "after"
 
     def _job(item):
@@ -361,12 +431,6 @@ def _run_image_rechecks(summaries: dict, before_keyframes: list, after_keyframes
     return total_calls
 
 def _judge_frame(side: str, s: dict, norm_path, keyframes: list):
-    """Return (frame_ndarray, box) for the moved judge for one side.
-
-    If the image re-check found this concept on this (supposedly absent)
-    side, use that keyframe and its box; otherwise use the best tracked
-    video frame.
-    """
     recheck = s.get("recheck") or {}
     if recheck.get("found") and str(recheck.get("video", "")).lower() == side:
         idx = recheck.get("keyframe_index")
@@ -401,7 +465,6 @@ _WATCHLIST_RISK = {"missing": "high", "moved": "high", "not_seen": "medium",
 
 def _build_watchlist_status(watchlist_list: list[str], summaries: dict, kept: list,
                             moved_verdicts: dict, images_for) -> list[dict]:
-    """Derive per-watchlist-item status from SAM labels + moved verdicts."""
     moved_kept = {_norm_concept(c.get("concept", "")) for c in kept if c.get("change") == "moved"}
     out = []
     for item in watchlist_list:
@@ -416,8 +479,6 @@ def _build_watchlist_status(watchlist_list: list[str], summaries: dict, kept: li
             elif label == "added":
                 status = "appeared"
             elif label == "present_both":
-                # 'moved verdict kept' = a kept moved claim for this concept;
-                # equivalently a true verdict at/above the grounding threshold.
                 v = moved_verdicts.get(key) or {}
                 try:
                     v_conf = float(v.get("confidence", 0.0) or 0.0)
@@ -425,7 +486,7 @@ def _build_watchlist_status(watchlist_list: list[str], summaries: dict, kept: li
                     v_conf = 0.0
                 verdict_kept = bool(v.get("moved")) and v_conf >= diffmod.MOVED_MIN_CONF
                 status = "moved" if (_norm_concept(key) in moved_kept or verdict_kept) else "in_place"
-            else:  # not_found
+            else:
                 status = "not_seen"
         note = _watchlist_note(concept, status)
         alias = s.get("alias") if isinstance(s, dict) else None
@@ -437,7 +498,29 @@ def _build_watchlist_status(watchlist_list: list[str], summaries: dict, kept: li
                     "images": images_for(concept)})
     return out
 
-def run(before, after, concepts=None, out_dir="outputs", progress=None, on_event=None, watchlist=None) -> dict:
+def _read_feed_entries(room: str) -> list[dict]:
+    """Earlier family-feed entries for the same room, in file order."""
+    entries: list[dict] = []
+    try:
+        if not FEED_PATH.is_file():
+            return entries
+        for line in FEED_PATH.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except Exception:
+                continue
+            if isinstance(obj, dict) and _norm_concept(obj.get("room", "")) == _norm_concept(room):
+                entries.append(obj)
+    except Exception as e:  # noqa: BLE001
+        log.warning("could not read feed for trend: %s", e)
+        return []
+    return entries
+
+def run(before, after, concepts=None, out_dir="outputs", progress=None, on_event=None, watchlist=None,
+        room=None, filmed_by=None, intentional=None) -> dict:
     def prog(msg: str):
         log.info(msg)
         if progress:
@@ -445,8 +528,19 @@ def run(before, after, concepts=None, out_dir="outputs", progress=None, on_event
 
     start, cost_start = time.time(), total_cost()
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    room = str(room).strip() if room and str(room).strip() else "Bedroom"
+    filmed_by = str(filmed_by).strip() if filmed_by and str(filmed_by).strip() else None
     watchlist_list = _clean_list(watchlist)
+    intentional_list = _clean_intentional(intentional)
     event_lock = threading.Lock()
+    # Mutable counters for stages that also run inside annotation helpers.
+    counters = {"privacy_checks": 0, "coverage_calls": 0, "floor_checks": 0, "floor_spark_calls": 0}
+    wonder_state = {"called": False}
+    wonder_lock = threading.Lock()
+
+    def _mark_wonder_called():
+        with wonder_lock:
+            wonder_state["called"] = True
 
     def _running_cost() -> float:
         try:
@@ -479,6 +573,24 @@ def run(before, after, concepts=None, out_dir="outputs", progress=None, on_event
             return {"before": _url(b_name) if (out / b_name).exists() else None,
                     "after": _url(a_name) if (out / a_name).exists() else None}
 
+        def _redact_frame_arr(frame):
+            """Privacy-blur a raw ndarray frame (annotated evidence).
+
+            Runs the same two SAM image checks as the keyframe privacy
+            stage and blurs any sensitive boxes. Never raises.
+            """
+            if frame is None:
+                return frame
+            counters["privacy_checks"] += 2
+            try:
+                sensitive = detect_sensitive(frame)
+                boxes = (sensitive or {}).get("boxes") or []
+                if boxes:
+                    return redact_image(frame, boxes)
+            except Exception as e:
+                log.warning("annotated-frame redaction failed: %s", e)
+            return frame
+
         # 1. Normalize
         emit({"stage": "normalize", "status": "start"})
         prog("Normalising videos (ffmpeg, 5 fps, max 30 s)…")
@@ -496,6 +608,57 @@ def run(before, after, concepts=None, out_dir="outputs", progress=None, on_event
         emit({"stage": "keyframes", "status": "done",
               "before": list(keyframe_urls["before"]), "after": list(keyframe_urls["after"])})
 
+        # 2b. Privacy — BEFORE any keyframe is sent to Muse Spark.
+        # SAM 3.1 itself sees raw frames because it is the detector.
+        privacy = {"people_blurred": 0, "documents_blurred": 0, "frames_checked": 0, "note": PRIVACY_NOTE}
+        emit({"stage": "privacy", "status": "start"})
+        prog("Blurring people and paper documents in keyframes (SAM 3.1)…")
+        try:
+            all_kf = [p for p in list(bf or []) + list(af or []) if p is not None]
+            privacy["frames_checked"] = int(len(all_kf))
+            counters["privacy_checks"] += 2 * len(all_kf)
+
+            def _privacy_job(kf):
+                people, docs = [], []
+                try:
+                    sensitive = detect_sensitive(kf) or {}
+                    people = list(sensitive.get("person") or [])
+                    docs = list(sensitive.get("paper document") or sensitive.get("paper_document") or [])
+                    boxes = list(sensitive.get("boxes") or (people + docs))
+                    if boxes:
+                        redact_image(kf, boxes)  # in place for path inputs
+                except Exception as e:
+                    log.warning("privacy redaction failed for keyframe %s: %s", kf, e)
+                return len(people), len(docs)
+
+            if all_kf:
+                with ThreadPoolExecutor(max_workers=6) as ex:
+                    futures = [ex.submit(_privacy_job, kf) for kf in all_kf]
+                    for fut in as_completed(futures):
+                        try:
+                            n_people, n_docs = fut.result()
+                        except Exception:
+                            log.exception("privacy job failed")
+                            n_people, n_docs = 0, 0
+                        privacy["people_blurred"] += int(n_people)
+                        privacy["documents_blurred"] += int(n_docs)
+            emit({"stage": "privacy", "status": "done",
+                  "people_blurred": int(privacy["people_blurred"]),
+                  "documents_blurred": int(privacy["documents_blurred"]),
+                  "frames_checked": int(privacy["frames_checked"])})
+            prog(f"Privacy: blurred {privacy['people_blurred']} people, "
+                 f"{privacy['documents_blurred']} documents across {privacy['frames_checked']} keyframes.")
+        except Exception as e:
+            log.exception("privacy stage failed; continuing")
+            privacy = {"people_blurred": int(privacy.get("people_blurred", 0) or 0),
+                       "documents_blurred": int(privacy.get("documents_blurred", 0) or 0),
+                       "frames_checked": int(privacy.get("frames_checked", 0) or 0),
+                       "note": PRIVACY_NOTE}
+            emit({"stage": "privacy", "status": "done",
+                  "people_blurred": privacy["people_blurred"],
+                  "documents_blurred": privacy["documents_blurred"],
+                  "frames_checked": privacy["frames_checked"], "error": str(e)})
+
         # 3. Inventory (watchlist always tracked: prepended, capped)
         emit({"stage": "inventory", "status": "start", "model": "muse-spark-1.3",
               "concepts": [], "objects": []})
@@ -504,7 +667,6 @@ def run(before, after, concepts=None, out_dir="outputs", progress=None, on_event
         objects = list_objects(bf, af, concepts=concepts)
         inventory_concepts = [o["concept"] for o in objects if isinstance(o, dict) and o.get("concept")]
         concept_list = _dedupe_prepend(watchlist_list, inventory_concepts, cap=MAX_CONCEPTS)
-        # Ensure watchlist items are represented in `objects` too.
         known = {_norm_concept(o.get("concept", "")) for o in objects if isinstance(o, dict)}
         extra_objects = [{"concept": c, "where_before": "", "where_after": "",
                           "suspected_change": "unchanged"}
@@ -514,6 +676,28 @@ def run(before, after, concepts=None, out_dir="outputs", progress=None, on_event
         emit({"stage": "inventory", "status": "done", "model": "muse-spark-1.3",
               "concepts": list(concept_list), "objects": objects})
         prog(f"Concepts ({len(concept_list)}): {', '.join(concept_list) or 'none'}")
+
+        # 3b. Coverage (Spark part) — after inventory, before tracking.
+        # Final score also needs post-tracking anchor overlap, so the
+        # "done" event is emitted after tracking (see 4c).
+        emit({"stage": "coverage", "status": "start", "model": "muse-spark-1.3"})
+        prog("Checking walkthrough coverage with Muse Spark 1.3…")
+        coverage_spark = {"score": 1.0, "missing_in_after": [], "missing_in_before": [], "retake_tip": ""}
+        coverage_error = None
+        counters["coverage_calls"] += 1
+        try:
+            cov = check_coverage(bf, af) or {}
+            try:
+                spark_score_tmp = float(cov.get("score", 1.0) or 0.0)
+            except Exception:
+                spark_score_tmp = 1.0
+            coverage_spark = {"score": max(0.0, min(1.0, spark_score_tmp)),
+                              "missing_in_after": [str(a) for a in (cov.get("missing_in_after") or [])],
+                              "missing_in_before": [str(a) for a in (cov.get("missing_in_before") or [])],
+                              "retake_tip": str(cov.get("retake_tip", "") or "")}
+        except Exception as e:
+            coverage_error = str(e)
+            log.exception("coverage Spark call failed; continuing with anchor overlap only")
 
         # 4. SAM tracking (concurrent; progress as each future completes)
         prog("Tracking concepts with SAM 3.1 (concurrent)…")
@@ -551,9 +735,7 @@ def run(before, after, concepts=None, out_dir="outputs", progress=None, on_event
         emit({"stage": "track", "status": "done"})
         summaries = diffmod.summarize_tracks(before_tracks, after_tracks)
 
-        # 4b. Vocabulary repair: aliases for not_found concepts, BEFORE
-        # the image re-check (which only handles added/removed). Entirely
-        # skipped — no events — when nothing is not_found.
+        # 4b. Vocabulary repair
         repair = _run_vocab_repair(summaries, watchlist_list, before_norm, after_norm,
                                    bf, af, prog, emit=emit,
                                    before_tracks=before_tracks, after_tracks=after_tracks)
@@ -561,19 +743,157 @@ def run(before, after, concepts=None, out_dir="outputs", progress=None, on_event
         sam_requests += int(repair.get("sam_requests", 0) or 0)
         sam_frames += int(repair.get("sam_frames", 0) or 0)
 
-        # Snapshot of ORIGINAL video-tracking labels: the final write_claims
-        # call below must still see these (not re-check-corrected labels), so
-        # Spark may e.g. claim 'armchair added' and the grounding filter can
-        # visibly drop it citing the re-check. Taken after repair so repaired
-        # concepts are reported under their (alias-derived) labels, still
-        # keyed by the original concept name.
         original_summaries = copy.deepcopy(summaries)
 
         # 5. SAM image re-checks (emits its own start/progress/done events)
         recheck_calls = _run_image_rechecks(summaries, bf, af, prog, emit=emit)
         rechecks_count = sum(1 for s in summaries.values() if (s.get("recheck") or {}).get("checked"))
 
+        # 4c. Coverage (final) — deterministic anchor overlap after tracking.
+        coverage = {"score": 1.0, "ok": True, "anchor_overlap": 1.0,
+                    "spark_score": float(coverage_spark.get("score", 1.0) or 0.0),
+                    "shared_anchors": [], "only_before": [], "only_after": [],
+                    "missing_in_after": list(coverage_spark.get("missing_in_after") or []),
+                    "missing_in_before": list(coverage_spark.get("missing_in_before") or []),
+                    "retake_tip": str(coverage_spark.get("retake_tip", "") or "")}
+        try:
+            shared, only_b, only_a = [], [], []
+            for concept, s in (summaries or {}).items():
+                if not diffmod.is_anchor(concept):
+                    continue
+                b_present = bool((s.get("before") or {}).get("present"))
+                a_present = bool((s.get("after") or {}).get("present"))
+                if b_present and a_present:
+                    shared.append(concept)
+                elif b_present:
+                    only_b.append(concept)
+                elif a_present:
+                    only_a.append(concept)
+            either = len(shared) + len(only_b) + len(only_a)
+            anchor_overlap = (len(shared) / either) if either else 1.0
+            spark_score = float(coverage_spark.get("score", 1.0) or 0.0)
+            final_score = min(spark_score, float(anchor_overlap))
+            coverage = {"score": float(final_score), "ok": bool(final_score >= 0.6),
+                        "anchor_overlap": float(anchor_overlap), "spark_score": float(spark_score),
+                        "shared_anchors": shared, "only_before": only_b, "only_after": only_a,
+                        "missing_in_after": list(coverage_spark.get("missing_in_after") or []),
+                        "missing_in_before": list(coverage_spark.get("missing_in_before") or []),
+                        "retake_tip": str(coverage_spark.get("retake_tip", "") or "")}
+        except Exception as e:
+            log.exception("coverage anchor computation failed; continuing")
+            if coverage_error is None:
+                coverage_error = str(e)
+        cov_done = {"stage": "coverage", "status": "done", "score": float(coverage.get("score", 0) or 0),
+                    "ok": bool(coverage.get("ok")), "retake_tip": str(coverage.get("retake_tip", "") or "")}
+        if coverage_error:
+            cov_done["error"] = coverage_error
+        emit(cov_done)
+        prog(f"Coverage: score={coverage['score']:.2f} ok={coverage['ok']} "
+             f"(spark={coverage['spark_score']:.2f}, anchors={coverage['anchor_overlap']:.2f})")
+
+        # 5b. Floor clutter check (grounded) — after tracking.
+        floor_check = {"items": [], "dropped": []}
+        floor_error = None
+        emit({"stage": "floor", "status": "start", "model": "muse-spark-1.3"})
+        prog("Checking the floor and walking path for clutter…")
+        try:
+            counters["floor_spark_calls"] += 1
+            try:
+                proposals = propose_floor_items(af) or []
+            except Exception as e:
+                log.warning("floor proposal failed: %s", e)
+                proposals = []
+                floor_error = str(e)
+            proposals = [p for p in proposals if isinstance(p, dict) and p.get("concept")][:6]
+
+            # Frame heights for the floor (y2) test, per AFTER keyframe.
+            kf_heights: list[float] = []
+            for kf in (af or []):
+                hgt = 0.0
+                try:
+                    img_tmp = cv2.imread(str(kf))
+                    if img_tmp is not None:
+                        hgt = float(img_tmp.shape[0])
+                except Exception:
+                    hgt = 0.0
+                kf_heights.append(hgt)
+
+            def _floor_job(item):
+                concept = " ".join(str(item.get("concept", "") or "").strip().lower().split())
+                where = str(item.get("where", "") or "")
+                best = None  # (c, box, kf_index, frame_h)
+                calls = 0
+                for idx, kf in enumerate(af or []):
+                    calls += 1
+                    try:
+                        parsed = segment_image(kf, concept)
+                    except Exception as e:
+                        log.warning("floor SAM check failed for %s on %s: %s", concept, kf, e)
+                        continue
+                    for det in _all_detections(parsed):
+                        frame_h = float(det.get("h") or 0) or (kf_heights[idx] if idx < len(kf_heights) else 0.0)
+                        if frame_h <= 0:
+                            continue
+                        box = det["box"]
+                        if float(det["c"]) >= FLOOR_MIN_CONF and float(box[3]) >= FLOOR_BOTTOM_FRAC * frame_h:
+                            if best is None or float(det["c"]) > float(best[0]):
+                                best = (float(det["c"]), [int(round(v)) for v in box], idx, frame_h)
+                return {"concept": concept, "where": where, "_best": best, "_calls": calls}
+
+            verified: list[dict] = []
+            if proposals:
+                with ThreadPoolExecutor(max_workers=6) as ex:
+                    futures = [ex.submit(_floor_job, p) for p in proposals]
+                    for fut in as_completed(futures):
+                        try:
+                            verified.append(fut.result())
+                        except Exception:
+                            log.exception("floor verification job failed")
+            # Keep proposal order for deterministic output.
+            order = {_norm_concept(p.get("concept", "")): i for i, p in enumerate(proposals)}
+            verified.sort(key=lambda v: order.get(_norm_concept(v.get("concept", "")), 99))
+            for v in verified:
+                counters["floor_checks"] += int(v.pop("_calls", 0) or 0)
+                best = v.pop("_best", None)
+                concept = v["concept"]; where = v["where"]
+                if best is None:
+                    floor_check["dropped"].append({
+                        "concept": concept,
+                        "reason": (f"SAM did not confirm '{concept}' on the floor in the AFTER keyframes "
+                                   f"(need c >= {FLOOR_MIN_CONF:.2f} and box bottom in the lower floor area)")})
+                    continue
+                c_val, box, kf_idx, _fh = best
+                # Save a redacted, annotated image for this kept item.
+                img_url = None
+                try:
+                    frame = cv2.imread(str((af or [])[kf_idx])) if af and 0 <= kf_idx < len(af) else None
+                    if frame is None and af:
+                        frame = cv2.imread(str(af[0]))
+                    if frame is not None:
+                        frame = _redact_frame_arr(frame)
+                        fname = f"floor_{_safe(concept)}.jpg"
+                        cv2.imwrite(str(out / fname), draw_box(frame, box, f"{concept}: on the floor", BRICK_RED))
+                        img_url = _url(fname)
+                except Exception as e:
+                    log.warning("floor annotated image failed for %s: %s", concept, e)
+                floor_check["items"].append({"concept": concept, "where": where,
+                                             "c": float(c_val), "image": img_url,
+                                             "box": box, "keyframe_index": int(kf_idx)})
+            prog(f"Floor check: {len(floor_check['items'])} kept, {len(floor_check['dropped'])} dropped.")
+        except Exception as e:
+            floor_error = str(e)
+            log.exception("floor stage failed; continuing")
+            floor_check = {"items": [], "dropped": list(floor_check.get("dropped", []))}
+        floor_done = {"stage": "floor", "status": "done",
+                      "kept": int(len(floor_check.get("items", []))),
+                      "dropped": int(len(floor_check.get("dropped", [])))}
+        if floor_error:
+            floor_done["error"] = floor_error
+        emit(floor_done)
+
         # 6. Moved judge (concurrent; progress as each future completes)
+        # Escalation: Spark confidence in [0.55, 0.80) -> muse-wonder-1.0
+        # re-judges with the same evidence images and its verdict is final.
         prog("Judging moved objects with Muse Spark 1.3…")
         emit({"stage": "judge", "status": "start", "concept": "", "moved": False,
               "confidence": 0.0, "reason": ""})
@@ -597,12 +917,39 @@ def run(before, after, concepts=None, out_dir="outputs", progress=None, on_event
                 except Exception as e:
                     log.exception("judge_moved failed %s", concept)
                     verdict = {"moved": False, "confidence": 0.0, "reason": str(e)}
+                if not isinstance(verdict, dict):
+                    verdict = {"moved": False, "confidence": 0.0, "reason": "unparseable Spark response"}
+                # --- Escalation judge (muse-wonder-1.0) ---
+                try:
+                    spark_conf = float(verdict.get("confidence", 0.0) or 0.0)
+                except Exception:
+                    spark_conf = 0.0
+                if ESCALATION_MIN_CONF <= spark_conf < ESCALATION_MAX_CONF:
+                    _mark_wonder_called()
+                    prog(f"Escalating '{concept}' to muse-wonder-1.0 "
+                         f"(Spark confidence {spark_conf:.2f} in [0.55, 0.80))…")
+                    wonder_verdict = None
+                    try:
+                        wonder_verdict = judge_moved_wonder(concept, str(bp), str(ap), bbox, abox)
+                    except Exception as e:  # noqa: BLE001
+                        log.warning("Wonder escalation failed for %s: %s", concept, e)
+                        wonder_verdict = None
+                    if isinstance(wonder_verdict, dict) and "moved" in wonder_verdict:
+                        try:
+                            w_conf = float(wonder_verdict.get("confidence", 0.0) or 0.0)
+                        except Exception:
+                            w_conf = 0.0
+                        verdict = {"moved": bool(wonder_verdict.get("moved")),
+                                   "confidence": max(0.0, min(1.0, w_conf)),
+                                   "reason": str(wonder_verdict.get("reason", "") or ""),
+                                   "first_opinion": dict(verdict),
+                                   "escalated": True,
+                                   "model": "muse-wonder-1.0"}
                 return concept, verdict
             except Exception as e:
                 log.exception("judge_moved failed %s", concept)
                 return concept, {"moved": False, "confidence": 0.0, "reason": str(e)}
             finally:
-                # judge temp files are per-concept, so concurrent cleanup is safe.
                 for _p in (bp, ap):
                     if _p is not None:
                         try:
@@ -625,30 +972,31 @@ def run(before, after, concepts=None, out_dir="outputs", progress=None, on_event
                         v_conf = float(verdict.get("confidence", 0.0) or 0.0)
                     except Exception:
                         v_conf = 0.0
-                    prog(f"Judged '{concept}': moved={bool(verdict.get('moved'))} (confidence {v_conf:.2f})")
-                    emit({"stage": "judge", "status": "progress", "concept": concept,
-                          "moved": bool(verdict.get("moved")), "confidence": v_conf,
-                          "reason": str(verdict.get("reason", ""))})
+                    prog(f"Judged '{concept}': moved={bool(verdict.get('moved'))} (confidence {v_conf:.2f})"
+                         + (" [escalated to muse-wonder-1.0]" if verdict.get("escalated") else ""))
+                    judge_event = {"stage": "judge", "status": "progress", "concept": concept,
+                                   "moved": bool(verdict.get("moved")), "confidence": v_conf,
+                                   "reason": str(verdict.get("reason", ""))}
+                    if verdict.get("escalated"):
+                        judge_event["escalated"] = True
+                        judge_event["model"] = "muse-wonder-1.0"
+                    emit(judge_event)
         emit({"stage": "judge", "status": "done", "concept": "", "moved": False,
               "confidence": 0.0, "reason": ""})
 
         # 7. Final Spark report
         emit({"stage": "report", "status": "start", "model": "muse-spark-1.3", "raw_claims": 0})
         prog("Writing grounded report with Muse Spark 1.3…")
-        # Deliberately pass original (pre-recheck) summaries: raw Spark claims
-        # stay separate from, and are then checked against, corrected evidence.
         written = write_claims(original_summaries, moved_verdicts, watchlist=watchlist_list)
         raw_claims = written.get("claims", [])
         emit({"stage": "report", "status": "done", "model": "muse-spark-1.3",
               "raw_claims": len(raw_claims)})
 
-        # 8. Grounding filter (carries risk/risk_reason through)
+        # 8. Grounding filter (carries risk/risk_reason; coverage drop added)
         kept, dropped = diffmod.grounding_filter(raw_claims, summaries, moved_verdicts,
-                                                 watchlist=watchlist_list)
+                                                 watchlist=watchlist_list, coverage=coverage)
         emit({"stage": "filter", "status": "done", "kept": len(kept), "dropped": len(dropped)})
 
-        # Repaired concepts: explanations/evidence must say what SAM
-        # actually tracked them as, whoever authored the claim.
         for claim in list(kept) + list(dropped):
             _key, _s = _find_summary(str(claim.get("concept", "")), summaries)
             alias = _s.get("alias") if isinstance(_s, dict) else None
@@ -682,7 +1030,6 @@ def run(before, after, concepts=None, out_dir="outputs", progress=None, on_event
                 if summ["best_frame"] is None or summ["best_box"] is None:
                     if not is_recheck_side:
                         continue
-                    # Annotate the re-check keyframe that overturned the label.
                     if change == "added" and side == "before":
                         continue
                     if change == "removed" and side == "after":
@@ -693,6 +1040,7 @@ def run(before, after, concepts=None, out_dir="outputs", progress=None, on_event
                     frame = cv2.imread(str(keyframes[idx]))
                     if frame is None:
                         continue
+                    frame = _redact_frame_arr(frame)
                     p = out / f"{side}_{_safe(concept)}.jpg"
                     cv2.imwrite(str(p), draw_box(frame, recheck["box"], label_text, color))
                     annotated.append(str(p))
@@ -704,6 +1052,7 @@ def run(before, after, concepts=None, out_dir="outputs", progress=None, on_event
                 frame = read_frame(norm, summ["best_frame"])
                 if frame is None:
                     continue
+                frame = _redact_frame_arr(frame)
                 p = out / f"{side}_{_safe(concept)}.jpg"
                 cv2.imwrite(str(p), draw_box(frame, summ["best_box"], label_text, color))
                 annotated.append(str(p))
@@ -714,23 +1063,92 @@ def run(before, after, concepts=None, out_dir="outputs", progress=None, on_event
             claim.setdefault("risk", "medium")
             claim.setdefault("risk_reason", "")
 
+        # Floor kept items are ALSO kept claims (change "on_floor").
+        for item in floor_check.get("items", []):
+            concept = item.get("concept", "")
+            where = str(item.get("where", "") or "")
+            where_l = where.lower()
+            high = any(tok in where_l for tok in ("bed", "path", "walk", "door", "hallway", "route", "bathroom"))
+            risk = "high" if high else "medium"
+            claim = {"concept": concept, "change": "on_floor",
+                     "explanation": where or f"'{concept}' is lying on the floor in a walking path.",
+                     "safety_note": "Trip hazard on the floor — move it off the walking path.",
+                     "source": "spark+sam", "risk": risk,
+                     "risk_reason": ("On the floor near the bed/walking path — a trip hazard for an older adult."
+                                     if high else "On the floor where someone may walk — a possible trip hazard."),
+                     "evidence": {"concept": concept, "label": "on_floor",
+                                  "frames_before": None, "frames_after": None,
+                                  "best_box_before": None, "best_box_after": item.get("box"),
+                                  "confidence_before": 0.0, "confidence_after": float(item.get("c", 0) or 0)},
+                     "images": {"before": None, "after": item.get("image")}}
+            kept.append(claim)
+            if item.get("image"):
+                img_path = out / Path(str(item["image"])).name
+                if str(img_path) not in annotated and img_path.exists():
+                    annotated.append(str(img_path))
+
         watchlist_status = _build_watchlist_status(watchlist_list, summaries, kept,
                                                    moved_verdicts, _images_for)
 
-        spark_calls = (1 if inventory_called else 0) + len(judge_items) + 1 + int(repair.get("spark_calls", 0) or 0)
+        # Dad's say: changes Dad says he made on purpose are intentional.
+        if intentional_list:
+            for claim in kept:
+                if str(claim.get("change", "")) not in INTENTIONAL_CHANGES:
+                    continue
+                match = _match_intentional(str(claim.get("concept", "")), intentional_list)
+                if match is None:
+                    continue
+                claim["intentional"] = {"quote": str(match.get("quote", "") or ""),
+                                         "speaker": str(match.get("speaker", "") or "unknown") or "unknown"}
+                claim["risk"] = "low"
+                claim["risk_reason"] = INTENTIONAL_RISK_REASON
+                prog(f"Intentional: '{claim.get('concept')}' ({claim.get('change')}) — "
+                     f"{match.get('speaker', 'unknown')}: \"{match.get('quote', '')}\"")
+
+        # Trend across visits: with >= 2 earlier feed entries for the
+        # same room, muse-wonder-1.0 (text only) summarises the trend.
+        # Skipped silently otherwise (or on any failure).
+        trend_result = None
+        try:
+            earlier_feed = _read_feed_entries(room)
+            if len(earlier_feed) >= 2:
+                recent_feed = list(reversed(earlier_feed[-20:]))  # newest first, max 20
+                _mark_wonder_called()
+                trend_candidate = analyse_trend(recent_feed, kept, watchlist_status)
+                if isinstance(trend_candidate, dict):
+                    trend_result = trend_candidate
+                    emit({"stage": "trend", "status": "done", "trend": trend_result,
+                          "model": "muse-wonder-1.0"})
+                    prog(f"Trend across {len(recent_feed)} earlier check(s): {trend_result.get('trend')}")
+        except Exception as e:  # noqa: BLE001
+            log.warning("trend stage skipped: %s", e)
+            trend_result = None
+
+        spark_calls = ((1 if inventory_called else 0) + len(judge_items) + 1
+                       + int(repair.get("spark_calls", 0) or 0)
+                       + int(counters.get("coverage_calls", 0) or 0)
+                       + int(counters.get("floor_spark_calls", 0) or 0))
         stats = {"concepts": len(concept_list), "sam_requests": int(sam_requests),
                  "sam_frames": int(sam_frames), "spark_calls": int(spark_calls),
                  "rechecks": int(rechecks_count),
-                 "repairs": int(repair.get("repair_sam_calls", 0) or 0)}
+                 "repairs": int(repair.get("repair_sam_calls", 0) or 0),
+                 "privacy_checks": int(counters.get("privacy_checks", 0) or 0),
+                 "coverage_calls": int(counters.get("coverage_calls", 0) or 0),
+                 "floor_checks": int(counters.get("floor_checks", 0) or 0)}
         models = ["muse-spark-1.3", "sam-3.1"]
+        if wonder_state["called"] and "muse-wonder-1.0" not in models:
+            models.append("muse-wonder-1.0")
 
         result = {"run_id": run_id, "before": str(before), "after": str(after),
+                  "room": room, "filmed_by": filmed_by,
                   "normalized_before": before_norm, "normalized_after": after_norm,
                   "objects": objects, "concepts": concept_list, "summaries": summaries,
                   "diff_table": summaries, "moved_verdicts": moved_verdicts,
                   "summary": written.get("summary", ""), "raw_claims": raw_claims,
                   "claims": kept, "kept_claims": kept, "dropped": dropped,
                   "annotated_images": annotated, "aliases": aliases,
+                  "privacy": privacy, "coverage": coverage, "floor_check": floor_check,
+                  "trend": trend_result, "intentional": intentional_list,
                   "watchlist": list(watchlist_list), "watchlist_status": watchlist_status,
                   "keyframes": keyframe_urls, "stats": stats, "models": models,
                   "latency_s": round(time.time() - start, 3),
@@ -751,11 +1169,14 @@ def main(argv=None):
     ap.add_argument("before"); ap.add_argument("after")
     ap.add_argument("--concepts", default=None, help="comma list override")
     ap.add_argument("--watchlist", default=None, help="comma list of care items that must stay put")
+    ap.add_argument("--room", default="Bedroom")
+    ap.add_argument("--filmed-by", default=None)
     ap.add_argument("--out", default="outputs")
     args = ap.parse_args(argv)
     concepts = [c.strip() for c in args.concepts.split(",")] if args.concepts else None
     watchlist = [c.strip() for c in args.watchlist.split(",") if c.strip()] if args.watchlist else None
-    result = run(args.before, args.after, concepts=concepts, out_dir=args.out, watchlist=watchlist)
+    result = run(args.before, args.after, concepts=concepts, out_dir=args.out, watchlist=watchlist,
+                 room=args.room, filmed_by=args.filmed_by)
     print(f"\n{'Concept':<24} {'Change':<10} {'Risk':<8} Source")
     print("-" * 60)
     for c in result["claims"]:

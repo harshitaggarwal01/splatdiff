@@ -6,6 +6,8 @@ SplatDiff is the engine codename from the author's earlier 3D-scene research; th
 
 The lead story: Dad is 82 and lives alone. After a hospital discharge or a near-miss, his daughter films the OT-approved safe setup as a baseline — walker next to the bed, lamp within reach, path to the bathroom clear. On her next visit she films again. Second Look shows her what drifted in between: is the walker still within reach, has clutter appeared on the floor, was the lamp moved away from the bed?
 
+**The grounded room-change check is the working product.** The glasses view described below is "Dad's point of view" — a working simulation, not a Meta product integration.
+
 ## Why
 
 The CDC reports that about 1 in 4 adults aged 65+ falls each year, and home hazards are a modifiable risk factor. Families often visit periodically, and slow drift between visits goes unnoticed: a walker pushed out of reach, clutter building up on the floor. Drift can create hazards. Second Look does not claim to reduce falls — it detects object drift, and drift is one factor among many (strength and balance, medications, vision and blood pressure all matter too, which is why an OT assessment remains the gold standard).
@@ -14,26 +16,76 @@ A false alarm wastes trust; a miss can matter far more. So Second Look follows o
 
 You do not need two walkthroughs on day one. Value starts at visit #2. Film today's safe room as the baseline; next visit, we show you what drifted.
 
-## Demo flow
+## The product, by route
 
-1. Open the Care dossier UI at `http://127.0.0.1:8000` (run `python server.py`).
-2. Click *Use the sample room* (`data/sample_before.mp4` / `data/sample_after.mp4`, a synthetic living room generated with Muse Image) or upload two phone walkthroughs.
-3. Add a care watchlist — items that *must stay put*, typed, or spoken via *Speak your care notes* as a care note (transcribed with Muse Voice Transcribe; a 10-second note transcribes in about 2.3 s). Watchlist items are always tracked, even if the room inventory misses them.
-4. Click *Check the room* and watch the live "check as it happens" view: each pipeline stage streams over SSE — normalising, keyframes, inventory, tracking, vocabulary repair if needed, image re-checks, moved judging, reporting, filtering.
-5. Read the report: watchlist first with a status each (`in_place` / `moved` / `missing` / `appeared` / `not_seen`) and a risk level; then other findings, an evidence board, and the "Struck from the report" section. For any HIGH finding, follow the **Do this next** block, tap **Mark as sorted** when it is done, and re-check that corner on the next visit. Print it as a family print report or copy a plain-text summary. *Past checks* replay from the run history — cached runs are free and instant.
+Run `python server.py`, then:
 
-## Features
+| Route | What it is |
+|---|---|
+| `/` | Product page, with **Try it now**. |
+| `/app` | The Care dossier app — the working room-change check described below. |
+| `/family` | The family feed — words only, never pictures, live over SSE. |
+| `/glasses` | "Dad's point of view" — a working **simulation** of a glasses-style view (see below). Not a Meta product integration. |
 
-- **Care watchlist** ("must stay put"): typed or spoken; always tracked; reported first, each item with a status (`in_place` / `moved` / `missing` / `appeared` / `not_seen`) and a risk level.
-- **Risk triage with a next step**: every finding is rated high / medium / low through a fall-risk lens (a walker out of reach is not the same as a moved cushion), and every HIGH finding carries a **Do this next** block, a **Mark as sorted** action, and a prompt to re-check it next visit.
-- **Live check view**: every stage streams over SSE with filmstrips and per-concept chips, so you can watch the check as it happens.
-- **Evidence board**: before/after frames with SAM boxes drawn, frames seen, confidences, and the image re-check result for anything that appeared or vanished.
-- **"Struck from the report"**: claims without SAM support are shown struck through (with an ink-strike animation in the UI) with a specific reason each — not silently deleted.
-- **Vocabulary repair**: if SAM returns nothing for a concept, Muse Spark proposes alias phrasings and SAM tests them (details below).
-- **SAM image re-check**: anything reported added or removed is re-checked by SAM image segmentation on frames from the side where it supposedly was not present (details below).
-- **Family print report + copy summary**: a calm, printable report and a copyable plain-text summary to send to family.
-- **Past checks replay**: previous runs are listed from `outputs/` and replay from cache — cached runs are free and instant.
-- **Two interfaces**: the Care dossier UI (`web/`, served by `server.py` at `http://127.0.0.1:8000`) and a Gradio fallback (`app.py`).
+## The Care dossier app (`/app`)
+
+One room at a time, built around how visits actually work:
+
+- **Rooms, filmed by, saved baseline per room.** Each check names the room (Bedroom, Hallway, Kitchen…) and who filmed it. A room can keep a saved baseline; compare later visits against it instead of re-uploading the "before" clip. **"This is the new setup"** promotes a finished check's "after" state to become the room's new baseline when Dad's setup legitimately changes.
+- **Record with this phone.** Film either walkthrough in the browser instead of uploading a file.
+- **Watchlist, typed or spoken.** The things that must stay put — walker, lamp, medication basket — typed in, or spoken as a care note and transcribed with Muse Voice Transcribe (`muse-voice-transcribe-1.0`), including diarization, so who said what is preserved. That matters: when **Dad's own words** explain a change — *"I moved the lamp so I can read by my chair"* — the finding is marked as **his choice, with low risk**, instead of being flagged at the family as drift. Dad narrating his own room is evidence, not just audio.
+- **Privacy blur before anything is stored, shown or sent on.** People and paper documents detected in frames are blurred before any frame is stored, shown, or sent to Muse Spark for reasoning. On the sample pair, **2 documents were blurred**. (SAM 3.1 itself sees the raw frame because it is the detector doing the blurring.) Raw videos are **deleted by default** after the check; keeping them is opt-in. Any check can be deleted ("Delete a check").
+- **Coverage check, with a retake tip.** Before trusting a diff, Second Look checks the two walkthroughs actually cover the same corners, and tells you what to re-film if they don't ("re-film the bathroom door"). On the sample pair the coverage score is **0.9**. A low-coverage diff is labelled as such rather than presented as fact.
+- **Grounded floor-clutter check.** Objects claimed to be on the floor in a walking path must be proven by SAM detections low in the frame; unproven clutter claims are struck like everything else.
+- **SAM vocabulary repair.** SAM does not always know a family's word. When a watchlist concept returns nothing, Muse Spark proposes a phrasing SAM can segment and SAM re-runs. Verified: **"walker" → "metal walking frame", found at c 0.875**.
+- **Image re-check strike.** Added/removed claims get a second, image-level SAM check on frames from the side where the object supposedly wasn't. Verified: an "armchair added" claim was struck when the image re-check found the armchair in the BEFORE frames at **c 0.75** — video tracking had simply missed it.
+- **Muse Wonder second opinions and trends.** Borderline "moved" calls get a Muse Wonder (`muse-wonder-1.0`) second opinion at runtime rather than a coin-flip threshold, and a cross-visit **trend sentence** summarises how a room is drifting over successive checks.
+- **Acting on a finding:** a **Needs-attention banner** when anything is high-risk; **Do this next** on every serious finding, **ask Dad first** before treating a change as a problem; **Mark as sorted** when it's handled; **Send to family**; **Print** a plain-language report.
+- **Past checks** per room, and **`.ics` re-film reminders** (download a calendar file: "re-film Dad's bedroom") so the next visit actually happens.
+
+## The family feed (`/family`)
+
+For the family who weren't there:
+
+- **Words only, never pictures.** No frames, no video, no transcripts — just findings in plain sentences, each traceable back to evidence in the app.
+- **Live over SSE, within a minute** of a check finishing. An opt-in browser notification announces new entries (only if the family member turns it on).
+- **Fall alerts can land here — from a better sensor.** A fall alert from *any* sensor — watch, pendant, radar, or glasses — can be posted to this same family feed after an **"Are you OK?" check-in**. Plainly: **glasses are a poor fall sensor** — they are off or charging at night and in the bathroom, exactly when serious falls cluster, and head motion is not body impact. Fall detection is partner territory; in the demo it is **simulated**, and Second Look does not claim to detect falls.
+- **"Ask about Dad's room"** — an agent grounded in the words feed. It answers with citations to feed entries and careful language: something was **"seen where it was"** at a stated time, not guaranteed to be there now.
+- **"Write an update for"** — one click drafts an update calibrated to the reader: **nearby** family (practical, who can pop in), **far away** family (reassuring, fuller context), or **Dad** — written *to* him, not about him.
+
+## Dad's point of view: the glasses simulation (`/glasses`)
+
+`/glasses` is a **working simulation** of what this product becomes from Dad's point of view — labelled as a simulation, running on this laptop with a phone-style camera view, **not** a Meta product integration and not running on Meta glasses.
+
+What is real in the simulation:
+
+- **Real SAM 3.1 calls per frame, ~0.9 s per frame.** The simulated glasses view runs the same detector as the room check — nothing is canned.
+- **Whispered watchlist prompts in Dad's ear**, e.g. *"Walker — on your left, close."* Position and proximity from the frame, spoken quietly, hands-free.
+- **"Where did I leave it?"** — a tab-only last-seen memory. Ask where the keys / glasses / walker were last seen and it answers only from what the camera actually saw, in honest language: *"Last seen 6:04 pm on the kitchen table — not seen since."* Never "your keys are…" as present truth. Last seen is not current location, and for medication it is never evidence of taking anything: check before taking.
+
+**Roadmap, stated as roadmap:** live glasses streaming via **Meta's Wearables Device Access Toolkit** is the intended next capture surface. It is not built, not demoed as built, and judges should score it as a direction, not a feature.
+
+## How Meta's models work together
+
+**4 run it, 2 built it.**
+
+Four Meta models run the product:
+
+| Model | Role |
+|---|---|
+| `muse-spark-1.3` (reasons) | Room inventory from keyframes; coverage judging; vocabulary-repair aliases; pairwise moved judgement relative to surrounding furniture; risk-triaged report, next steps, and feed wording. |
+| `sam-3.1` (proves) | Text-prompted video tracking of every object in both walkthroughs; image re-checks; privacy blurring detections; floor-clutter verification; per-frame detections in the glasses simulation. |
+| `muse-voice-transcribe-1.0` (listens) | Spoken watchlists and care notes, with diarization — so Dad's own explanation marks a finding as his choice (low risk). |
+| `muse-wonder-1.0` (second opinion) | Second opinions on borderline "moved" calls, and the cross-visit trend sentence. |
+
+Two more built it:
+
+| Model | Role |
+|---|---|
+| `muse-image-1.0` | Generated the synthetic test room and its edited "after" version used for the sample pair and ground truth. |
+| `muse-wonder-1.0` | Wrote the codebase — **~25 reviewed generation rounds with up to 5 parallel workers**, each round reviewed and run by a human, **plus 3 red-team critique rounds by Muse Wonder and Muse Spark** (`build_log/`), including the critique that produced the glasses positioning in this README. |
+
+Verified model-needs-model moments: SAM returned nothing for "walker"; Spark's "metal walking frame" let SAM find it at c 0.875. SAM video tracking missed the armchair in BEFORE; its own image re-check found it at c 0.75 and struck Spark's "armchair added" claim.
 
 ## Architecture
 
@@ -41,100 +93,28 @@ You do not need two walkthroughs on day one. Value starts at visit #2. Film toda
 flowchart LR
   A[BEFORE walkthrough] --> N[Normalize: ffmpeg 5 fps, 640 px, 30 s cap]
   B[AFTER walkthrough] --> N
-  VN[Spoken care note recorded while filming] --> VT[Muse Voice Transcribe 1.0 transcription]
-  VT --> W[Care watchlist: items that must stay put]
-  W -.-> S1
   N --> K[6 keyframes per video]
-  K --> S1[Muse Spark 1.3: room inventory + watchlist concepts]
-  S1 --> C[Concept list]
-  C --> SAM[SAM 3.1: text-prompted video tracking, each concept x both videos]
-  N --> SAM
+  K --> P[Privacy: SAM person/document detections blurred before storage, display, or Spark]
+  P --> S1[Muse Spark 1.3: inventory + coverage + watchlist concepts]
+  S1 --> SAM[SAM 3.1: video tracking, each concept x both videos]
   SAM --> VR{SAM found nothing?}
-  VR -->|yes| AL[Muse Spark 1.3: propose alias phrasings]
-  AL --> SAM2[SAM 3.1: test aliases on the video]
-  SAM2 --> D
-  VR -->|no| D[Deterministic diff: present = 2+ frames at c >= 0.5]
-  D --> RC[SAM 3.1 image re-check: added/removed concepts re-segmented on frames of the supposedly-absent side]
-  RC --> D2[Corrected SAM labels: a re-check find overturns added/removed]
-  D2 --> S2[Muse Spark 1.3: pairwise moved judgement, present_both concepts]
-  S2 --> S3[Muse Spark 1.3: risk-triaged report + spoken notes to watchlist items]
+  VR -->|yes| AL[Spark: alias phrasing] --> SAM
+  SAM --> D[Deterministic diff: present = 2+ frames at c >= 0.5]
+  D --> RC[SAM image re-check of added/removed]
+  RC --> S2[Spark moved judge; Wonder second opinion if borderline]
+  S2 --> S3[Spark: risk-triaged claims; Voice Transcribe notes incl. Dad's words]
   S3 --> G{Grounded-or-dropped filter}
-  D2 --> G
-  G --> R[Kept findings + evidence board + Do this next]
+  G --> R[Kept findings + evidence + Do this next]
   G --> X[Struck claims, shown with reasons]
-  R --> OUT[result.json + report.md + annotated frames]
+  R --> F[Family feed /family: words only, live over SSE]
+  R --> T[Past checks + cross-visit trend sentence]
 ```
 
-Pipeline detail: videos are normalised with the ffmpeg binary from `imageio-ffmpeg` to H.264 MP4 at 5 fps, 640 px wide, capped at 30 s (at most 150 frames per clip), cached by input SHA-256. Muse Spark reads 6 keyframes from each video and returns a strict-JSON inventory of movable household objects (max 12), plus the care watchlist concepts. SAM 3.1 then tracks every concept in both videos (requests run concurrently). Presence is deterministic: detected in at least 2 frames at confidence at least 0.5. For concepts present in both videos, Spark judges "moved" from the best before/after frames with the SAM box drawn, judging position relative to surrounding furniture because the camera viewpoint differs between videos; a moved claim is kept only at judge confidence at least 0.80. The final report call receives the full diff table and writes claims, each with a risk level and reason. The grounding filter then keeps or strikes each claim:
+The grounding filter: `added` kept only if SAM's label is `added`; `removed` only if `removed`; `moved` only if SAM says `present_both` **and** the moved verdict holds (with a Wonder second opinion on borderline calls). Unmentioned SAM-only added/removed changes are added back as kept claims with `source: "sam"`. Every Meta API call is logged to `cache/costs.jsonl`, and Responses calls are disk-cached in `cache/responses/` (`SPLATDIFF_NO_CACHE=1` disables), making replays free and instant.
 
-- `added` kept only if SAM's label is `added`; `removed` only if `removed`.
-- `moved` kept only if SAM says `present_both` **and** the pairwise moved verdict is true at confidence >= 0.80.
-- Everything else is dropped with a reason string, and SAM-only added/removed changes that Spark failed to mention are added back as kept claims with `source: "sam"`.
+## Honest numbers
 
-Every Meta API call is logged to `cache/costs.jsonl` (model, kind, estimated USD, latency, timestamp), and Responses calls are disk-cached in `cache/responses/` keyed by request hash (`SPLATDIFF_NO_CACHE=1` disables this), which is what makes replays free and instant.
-
-## How Meta's models work together
-
-**3 run it, 2 built it.**
-
-Three Meta models run every check:
-
-| Model | Role in Second Look |
-|---|---|
-| `muse-spark-1.3` (reasons) | Room inventory from keyframes; vocabulary-repair aliases when SAM does not know a word; pairwise moved judge; risk-triaged report with Do-this-next steps; turning spoken notes into watchlist items. |
-| `sam-3.1` (proves) | Text-prompted video tracking of every object in both walkthroughs; image re-check of anything that appeared or vanished; testing alias phrasings during vocabulary repair. |
-| `muse-voice-transcribe-1.0` (listens) | Transcribes spoken care notes and the optional narration recorded while filming (10 s note in ~2.3 s) — hands stay on the phone, filming. |
-
-Two more built it:
-
-| Model | Role in building Second Look |
-|---|---|
-| `muse-image-1.0` | Generated the scoreable synthetic test room and its edited "after" version used for the sample pair and ground truth. |
-| `muse-wonder-1.0` | Generated the codebase: ~13 reviewed generation rounds from written specs in `build_log/`, with parallel workers (pipeline, server, front-end, voice), each round reviewed and run by a human, plus this red-team critique round. Transcripts in `build_log/wonder_*.md`. |
-
-This is a dependency, not a model list. Two verified interactions show why the models need each other:
-
-- **Vocabulary repair (verified):** SAM returned nothing for "walker". Spark proposed "metal walking frame"; SAM then found it at c=0.875, and the walker was correctly reported "still in place". Without Spark teaching SAM a new word, SAM is blind to the object the family cares about most.
-- **SAM image re-check (verified):** SAM's video tracking missed the armchair in the before clip. Spark's claim that the armchair was "added" was sent back for an image re-check; SAM found the armchair in the first video at c=0.75, and the false claim was struck from the report. Without the re-check, the false claim ships.
-
-## Results
-
-On our one scoreable test room (3 runs), the raw model invented claims 25–40% of the time; grounding struck every one — this is a smoke test, not a benchmark.
-
-Scored with `eval.py` (fuzzy concept match) on the synthetic pair (ground truth: backpack removed, floor lamp moved, red suitcase added), across 3 runs:
-
-| Claims | Precision | Recall | Hallucinated-claim rate |
-|---|---|---|---|
-| Raw Muse Spark 1.3 claims | 0.60–0.75 | 1.00 | 25–40% |
-| Grounded kept claims (after the filter) | 1.00 | 1.00 | 0% |
-
-Honest caveats, in the same breath as those numbers: this is n=1 synthetic pair; the 0.80 moved threshold was set after looking at it; this is a smoke test, not a benchmark; real footage is pending. The grounded numbers describe this tested pair only — recall on real, cluttered rooms is untested, and that is the number that matters most for safety (see "false negatives" below).
-
-## Cost
-
-A fresh, uncached run on the sample pair takes about 1 minute and about **$0.33**: SAM video tracking ~$0.23 (26 SAM requests / ~650 frames per run on the sample), SAM image re-checks ~$0.05, Muse Spark ~$0.06. Cached replays are free and instant. Every call is itemised in `cache/costs.jsonl`.
-
-## Questions a judge will ask
-
-**Why a pan video, not photos?** The pipeline does reduce each video to 6 keyframes for Spark's inventory — but SAM's video tracking is the true video consumer. A short pan gives SAM temporal evidence (presence = detected in 2+ frames at c >= 0.5, not one possibly-lucky frame) and coverage without aiming: it catches a walker behind a chair and clutter on the floor that a couple of snapped photos would miss. Our sample pair is admittedly Ken Burns pans over Muse Image stills, because that is what makes it scoreable.
-
-**Why not a fixed camera?** A fixed camera is continuous and would catch drift the day it happens; we catch it at the next visit, after an exposure window. Our defences are the ones families actually choose: no installed hardware, nothing recording between visits, no camera watching Dad sleep, and consent per visit — you film for 20 seconds when you visit, with Dad, and nothing is recorded in between. Always-on monitoring is exactly what families reject in bedrooms.
-
-**Presence is not safety.** Correct, and the report says so. "Walker in_place" (labelled in plain language: *"Seen where it should be. We can't check it's reachable or working."*) means a box appeared in 2+ frames. It does not mean reachable, unblocked, brakes on, or the path to it clear. A lamp present does not mean plugged in with a working bulb. We detect objects; hazards are often states and absences — a missing grab bar, a loose rug edge, a spill — that object detection cannot see.
-
-**`not_seen` is not missing.** The report states this next to every `not_seen`: *"Not seen in this video — not the same as missing. Check before you worry"* (e.g. check the corner by the bed). SAM may have missed it, or the pan may not have covered it. It is a prompt to look, not an alarm and not an all-clear.
-
-**What happens after HIGH?** Every HIGH finding carries a **Do this next** block in plain steps — for the walker: *"Move the walker back within arm's reach of the bed. Ask Dad to show you he can reach it. Then re-film this corner — we'll confirm it's back."* — a **Mark as sorted** action once it is done, and a re-check of that item on the next visit. If it is still moved next visit, it surfaces again. A report that ends at detection is a demo; the loop ends at resolution.
-
-**What about Dad's consent?** The user is the daughter; the filmed person is Dad. Only film rooms Dad is happy to share: ask together, film together, keep together. Videos are processed to find objects, frames go to cloud APIs, annotated frames are stored locally in `outputs/` (delete a run folder to remove a check; there is no in-app delete yet). Visitors, aides, medication labels and documents can end up in frame — another reason filming is per-visit and deliberate, never ambient.
-
-**Is this a medical device?** No. Second Look is not a medical device, does not assess a person's health, and does not replace an OT or nurse safety assessment. Risk triage is a prompt to look and act, not health advice; if a HIGH finding worries you, put the item back, tell family, and ask the OT or nurse.
-
-**False negatives vs false positives?** False negatives matter more, and our framing must not hide that. The struck-claims story celebrates killing false positives, but a missed "walker moved" is the catastrophic error — and our n=1 synthetic eval cannot speak to recall in a real cluttered room. Recall on real rooms is untested. A struck claim is charming; a silent miss is not.
-
-**Who else does this?** Encircle and Sortly catalog a room — room-by-room photo/video baselines and AI inventories, built largely for insurance and household cataloguing — but neither diffs two visits. Fall detectors (watches, pendants, radar) act *after* a fall. The visit-to-visit diff, grounded or struck, is the gap Second Look sits in. The same engine applies to rental move-out inspections in one line — but the lead user is the daughter, and that is who this is built for. A home-care nurse or OT doing follow-up visits is the most credible repeat user after her, and a Phase-2 user (procurement, liability); siblings rotating visits and an aide filming between family visits are the expansion story.
-
-**Where are the splats?** There are none. See the engine-codename line under the title.
+On our one scoreable test room (3+ runs), the raw model invented 25–40% of claims; grounding struck every one — **a smoke test, not a benchmark**. Real cluttered rooms are untested, and recall there — the number that matters most, since a missed "walker moved" is the catastrophic error — is unknown. A fresh sample check takes **~1–1.5 min and ~$0.24–0.33**; cached replays are free and instant.
 
 ## Setup
 
@@ -172,19 +152,18 @@ python eval.py --gt data/gt.json --run before.mp4 after.mp4
 
 Outputs land in `outputs/<run_id>/`: `result.json`, `report.md`, and annotated frames `before_<concept>.jpg` / `after_<concept>.jpg` with coloured boxes and labels (green added, red removed, orange moved).
 
-## How this was built (Muse Wonder)
-
-This codebase was generated with `muse-wonder-1.0` over ~13 reviewed generation rounds from written specs kept in `build_log/`, with parallel workers — pipeline, server, front-end, and voice workers — each round reviewed and run by a human before the next, plus a final red-team critique round by `muse-wonder-1.0` and `muse-spark-1.3` (`build_log/critique_wonder.md`, `build_log/critique_spark.md`) whose fixes are applied in these docs. The raw transcripts are in `build_log/wonder_*.md`; the specs they were generated from are in `build_log/` alongside them.
-
 ## Limitations
 
-- Viewpoint differences between the two handheld clips make "moved" the weakest call; the judge compares position relative to surrounding furniture rather than pixels, but it is still the least reliable label.
+- Viewpoint differences between the two handheld clips make "moved" the weakest call; the judge compares position relative to surrounding furniture rather than pixels.
 - SAM recall on small or partly hidden objects is imperfect; a missed detection can flip a label, which the image re-check only partly mitigates. False negatives matter more than false positives in this product, and recall on real cluttered rooms is untested.
-- Presence is not safety: a detected object may be unreachable, blocked or not working, and object detection cannot see states or absences such as a loose rug edge or a spill.
+- Presence is not safety: a detected object may be unreachable, blocked or not working, and object detection cannot see states or absences such as a loose rug edge or a spill. "Seen where it was" is a sighting, not a guarantee.
+- The glasses view is a simulation on `/glasses`. Live streaming via Meta's Wearables Device Access Toolkit is roadmap only; no Meta glasses integration exists in this repo.
+- Glasses are a poor fall sensor (off/charging at night and in the bathroom; head motion ≠ body impact). Fall alerts in the feed are simulated and are partner territory (watch, pendant, radar).
+- Last-seen memory only knows what the camera saw; drawers, dark rooms, charging gaps and other people moving things break the chain. It never answers medication questions beyond last-seen location and time.
 - Boxes, not masks: mask payload encoding is undocumented, so evidence is box-level, not pixel-level.
 - The 30 s cap at 5 fps bounds cost and latency but can miss detail.
 - English voice notes only tested.
-- Not a medical device. Second Look reports room changes; it does not assess a person's health or replace a professional safety assessment.
+- Not a medical device. Second Look reports room changes; it does not assess a person's health or replace a professional safety assessment. Consent is per visit: ask together, film together; nothing is recorded between visits.
 
 ## Prior work disclosure
 

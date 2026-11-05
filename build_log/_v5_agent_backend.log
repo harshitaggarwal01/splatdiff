@@ -1,0 +1,4 @@
+done in 74s, 73375 chars, usage={'input_tokens': 20417, 'input_tokens_details': {'cached_tokens': 0}, 'output_tokens': 19504, 'output_tokens_details': {'reasoning_tokens': 2134}, 'total_tokens': 39921}
+wrote:
+  splatdiff/agent.py
+  server.py

@@ -3,12 +3,19 @@
 Converts any audio/video input to 16 kHz mono WAV with ffmpeg, sends it to
 POST https://api.meta.ai/v1/asr/transcribe, and (via Muse Spark 1.3) extracts
 a caregiver watchlist of objects that must stay in place / within reach.
+
+With ``diarize=True``, transcription uses request mode ``DIARIZATION`` and
+``Accept: text/plain``; the response is one turn per line as ``A:text`` /
+``B:text`` (``unknown:text`` if unattributed), parsed into ``turns``.
+:meth:`extract_intent` additionally pulls out changes a speaker says were
+made ON PURPOSE ("Dad's say").
 """
 from __future__ import annotations
 
 import json
 import logging
 import os
+import re
 import subprocess
 import tempfile
 import time
@@ -33,6 +40,8 @@ _NO_STREAM_PHRASES = (
     "matches no streams",
     "no stream",
 )
+
+_TURN_RE = re.compile(r"^\s*([^:\n]{1,32}?)\s*:\s*(.+)$")
 
 
 def _log_cost(model: str, kind: str, est_usd: float, latency_s: float) -> None:
@@ -132,23 +141,51 @@ def _wav_duration_ms(wav_path: Path) -> int:
     return int(payload / 32000.0 * 1000)
 
 
-def transcribe(path) -> dict:
+def _parse_turns(text: str) -> list[dict]:
+    """Parse DIARIZATION text/plain output: one turn per line, 'A:text'."""
+    turns: list[dict] = []
+    for line in str(text or "").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        m = _TURN_RE.match(line)
+        if m:
+            speaker = m.group(1).strip() or "unknown"
+            turn_text = m.group(2).strip()
+        else:
+            speaker, turn_text = "unknown", line
+        if turn_text:
+            turns.append({"speaker": speaker, "text": turn_text})
+    return turns
+
+
+def transcribe(path, diarize: bool = False) -> dict:
     """Transcribe an audio/video file.
 
     Returns {'transcript': str, 'duration_ms': int, 'latency_s': float}.
-    A file with no audio stream yields an empty transcript (no API call).
+    With ``diarize=True`` the ASR request uses mode ``DIARIZATION`` and
+    ``Accept: text/plain``, and the result also carries
+    ``'turns': [{'speaker', 'text'}]`` parsed from the one-turn-per-line
+    response. A file with no audio stream yields an empty transcript
+    (no API call).
     """
     start = time.time()
     src = Path(path)
     if not src.is_file():
         raise FileNotFoundError(f"audio/video file not found: {src}")
 
+    def _empty() -> dict:
+        out = {"transcript": "", "duration_ms": 0, "latency_s": round(time.time() - start, 3)}
+        if diarize:
+            out["turns"] = []
+        return out
+
     if _probe_has_audio_stream(src) is False:
-        return {"transcript": "", "duration_ms": 0, "latency_s": round(time.time() - start, 3)}
+        return _empty()
 
     wav_path = _convert_to_wav(src)
     if wav_path is None:
-        return {"transcript": "", "duration_ms": 0, "latency_s": round(time.time() - start, 3)}
+        return _empty()
 
     try:
         wav_bytes = wav_path.read_bytes()
@@ -157,9 +194,11 @@ def transcribe(path) -> dict:
         fallback_duration_ms = _wav_duration_ms(wav_path)
 
         request_json = json.dumps(
-            {"model": MODEL, "audioEncoding": "WAV", "mode": "PUSH_TO_TALK"}
+            {"model": MODEL, "audioEncoding": "WAV",
+             "mode": "DIARIZATION" if diarize else "PUSH_TO_TALK"}
         )
-        headers = {"Authorization": f"Bearer {_api_key()}", "Accept": "application/json"}
+        headers = {"Authorization": f"Bearer {_api_key()}",
+                   "Accept": "text/plain" if diarize else "application/json"}
 
         last_err: Exception | None = None
         api_start = time.time()
@@ -183,24 +222,32 @@ def transcribe(path) -> dict:
                         f"retryable {resp.status_code}: {resp.text[:1000]}", response=resp
                     )
                 resp.raise_for_status()
-                data = resp.json()
                 api_latency = time.time() - api_start
 
-                transcript = data.get("transcript") or ""
-                if not isinstance(transcript, str):
-                    transcript = str(transcript)
-                try:
-                    duration_ms = int(data.get("audioDurationMs") or fallback_duration_ms)
-                except Exception:  # noqa: BLE001
+                if diarize:
+                    turns = _parse_turns(resp.text or "")
+                    transcript = "\n".join(f"{t['speaker']}: {t['text']}" for t in turns)
                     duration_ms = fallback_duration_ms
+                else:
+                    data = resp.json()
+                    transcript = data.get("transcript") or ""
+                    if not isinstance(transcript, str):
+                        transcript = str(transcript)
+                    try:
+                        duration_ms = int(data.get("audioDurationMs") or fallback_duration_ms)
+                    except Exception:  # noqa: BLE001
+                        duration_ms = fallback_duration_ms
 
                 est_usd = COST_PER_AUDIO_HOUR_USD * (duration_ms / 1000.0 / 3600.0)
                 _log_cost(MODEL, "transcribe", est_usd, api_latency)
-                return {
+                result = {
                     "transcript": transcript,
                     "duration_ms": duration_ms,
                     "latency_s": round(time.time() - start, 3),
                 }
+                if diarize:
+                    result["turns"] = turns
+                return result
             except requests.HTTPError as exc:
                 if exc.response is not None and exc.response.status_code == 400:
                     raise
@@ -214,6 +261,39 @@ def transcribe(path) -> dict:
         raise RuntimeError(f"Voice Transcribe failed after 3 attempts: {last_err}")
     finally:
         wav_path.unlink(missing_ok=True)
+
+
+def _spark_json(prompt: str, max_tokens: int = 1000):
+    body = {
+        "model": "muse-spark-1.3",
+        "input": [meta_api.user_message([meta_api.text_part(prompt)])],
+        "reasoning": {"effort": "low"},
+        "max_output_tokens": max_tokens,
+    }
+    resp = meta_api.responses(body)
+    raw = meta_api.extract_text(resp)
+    return meta_api.parse_json_loose(raw)
+
+
+def _clean_items(raw_items, limit: int = 8) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in raw_items or []:
+        if isinstance(item, dict):
+            item = item.get("concept") or item.get("name") or item.get("item") or ""
+        if not isinstance(item, str):
+            continue
+        cleaned = item.strip().strip(".,;:!?\"'").strip()
+        if not cleaned:
+            continue
+        key = cleaned.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(cleaned)
+        if len(out) >= limit:
+            break
+    return out
 
 
 def extract_watchlist(transcript) -> list[str]:
@@ -234,35 +314,98 @@ def extract_watchlist(transcript) -> list[str]:
         'Respond with strict JSON only, no markdown fences: {"items": ["walker", "pill organizer"]}\n\n'
         f"Transcript:\n{text}"
     )
-    body = {
-        "model": "muse-spark-1.3",
-        "input": [meta_api.user_message([meta_api.text_part(prompt)])],
-        "reasoning": {"effort": "low"},
-        "max_output_tokens": 1000,
-    }
-    resp = meta_api.responses(body)
-    raw = meta_api.extract_text(resp)
-    parsed = meta_api.parse_json_loose(raw)
+    parsed = _spark_json(prompt, max_tokens=1000)
     if isinstance(parsed, dict):
         items = parsed.get("items") or []
     elif isinstance(parsed, list):
         items = parsed
     else:
         items = []
+    return _clean_items(items, limit=8)
 
-    out: list[str] = []
+
+def _format_turns_or_transcript(transcript_or_turns) -> str:
+    """Render turns ([{'speaker','text'}]) or a plain transcript as text."""
+    if isinstance(transcript_or_turns, dict):
+        transcript_or_turns = (transcript_or_turns.get("turns")
+                               or transcript_or_turns.get("transcript") or "")
+    if isinstance(transcript_or_turns, (list, tuple)):
+        lines = []
+        for turn in transcript_or_turns:
+            if isinstance(turn, dict):
+                speaker = str(turn.get("speaker", "") or "unknown")
+                text = str(turn.get("text", "") or turn.get("transcript", "") or "")
+            else:
+                speaker, text = "unknown", str(turn)
+            if text.strip():
+                lines.append(f"{speaker}: {text.strip()}")
+        return "\n".join(lines)
+    return str(transcript_or_turns or "").strip()
+
+
+def extract_intent(transcript_or_turns) -> dict:
+    """Extract watchlist items AND on-purpose changes ("Dad's say").
+
+    Accepts a transcript string or diarized turns
+    ``[{'speaker', 'text'}]``. Via Muse Spark 1.3 (strict JSON) returns
+    ``{'items': [...], 'intentional': [{'concept', 'quote', 'speaker'}]}``
+    where ``items`` are objects that must stay in place / within reach
+    (the watchlist), and ``intentional`` lists objects a speaker says
+    were moved/placed/removed ON PURPOSE (e.g. 'I moved the lamp to
+    read by my chair'), each with the exact supporting quote and the
+    speaker who said it. Empty input -> empty lists, no API call.
+    """
+    empty = {"items": [], "intentional": []}
+    text = _format_turns_or_transcript(transcript_or_turns)
+    if not text:
+        return dict(empty)
+    prompt = (
+        "You are listening to a family caregiver / elderly parent (\"Dad\") voice note about Dad's room. "
+        "Lines may be prefixed with a speaker label like 'A:' or 'B:' (or 'unknown:'). Extract two things:\n"
+        "1. \"items\": up to 8 physical household objects the speakers say must stay in place, stay within "
+        "reach, or be checked on (e.g. 'walker', 'floor lamp', 'pill organizer'). Each is a short, singular "
+        "noun phrase a segmentation model could find.\n"
+        "2. \"intentional\": objects a speaker says were moved, placed, put, taken away or removed ON PURPOSE "
+        "by themselves or Dad (e.g. 'I moved the lamp to read by my chair', 'we put the suitcase in the spare "
+        "room'). For each: \"concept\" (short singular noun phrase), \"quote\" (the exact words from the "
+        "transcript saying it was done on purpose), and \"speaker\" (the speaker label for that line, e.g. "
+        "'A', 'B' or 'unknown').\n"
+        "Rules: only include objects actually mentioned; invent nothing. An object may appear in both lists. "
+        "If nothing fits a list, return it empty.\n"
+        'Respond with strict JSON only, no markdown fences: '
+        '{"items": ["walker"], "intentional": [{"concept": "floor lamp", "quote": "I moved the lamp to read by my chair", "speaker": "A"}]}\n\n'
+        f"Transcript:\n{text}"
+    )
+    try:
+        parsed = _spark_json(prompt, max_tokens=1500)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("extract_intent failed: %s", exc)
+        return dict(empty)
+    if isinstance(parsed, list):
+        parsed = {"items": parsed}
+    if not isinstance(parsed, dict):
+        return dict(empty)
+
+    items = _clean_items(parsed.get("items") or [], limit=8)
+
+    intentional: list[dict] = []
     seen: set[str] = set()
-    for item in items:
-        if not isinstance(item, str):
-            continue
-        cleaned = item.strip().strip(".,;:!?\"'").strip()
-        if not cleaned:
-            continue
-        key = cleaned.lower()
-        if key in seen:
-            continue
-        seen.add(key)
-        out.append(cleaned)
-        if len(out) >= 8:
-            break
-    return out
+    raw_intentional = parsed.get("intentional") or []
+    if isinstance(raw_intentional, (list, tuple)):
+        for entry in raw_intentional:
+            if isinstance(entry, str):
+                entry = {"concept": entry, "quote": "", "speaker": "unknown"}
+            if not isinstance(entry, dict):
+                continue
+            concept = " ".join(str(entry.get("concept", "") or "").strip().lower().split())
+            concept = concept.strip(".,;:!?\"'")
+            if not concept or concept in seen:
+                continue
+            seen.add(concept)
+            speaker = str(entry.get("speaker", "") or "unknown").strip() or "unknown"
+            intentional.append({"concept": concept,
+                                "quote": str(entry.get("quote", "") or "").strip(),
+                                "speaker": speaker})
+            if len(intentional) >= 8:
+                break
+    return {"items": items, "intentional": intentional}

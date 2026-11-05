@@ -1,0 +1,6 @@
+done in 120s, 135519 chars, usage={'input_tokens': 37843, 'input_tokens_details': {'cached_tokens': 0}, 'output_tokens': 36983, 'output_tokens_details': {'reasoning_tokens': 4495}, 'total_tokens': 74826}
+wrote:
+  splatdiff/wonder.py
+  splatdiff/pipeline.py
+  splatdiff/voice.py
+  server.py

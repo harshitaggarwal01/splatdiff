@@ -82,6 +82,116 @@ def list_objects(before_frames: list, after_frames: list, concepts=None) -> list
                           "suspected_change": str(o.get("suspected_change", "unchanged"))})
     return clean
 
+def check_coverage(before_frames: list, after_frames: list) -> dict:
+    """Judge whether BEFORE and AFTER walkthroughs cover the same room areas.
+
+    Sends 3 BEFORE + 3 AFTER keyframes to Spark. Returns
+    {"score": 0..1, "missing_in_after": [str], "missing_in_before": [str],
+     "retake_tip": str}. On any failure returns a neutral default
+    (score 1.0, no missing areas) so a coverage-call failure never by
+    itself condemns a run; the pipeline still applies the deterministic
+    anchor-overlap cap afterwards.
+    """
+    before_paths = [p for p in list(before_frames or [])[:3] if p is not None]
+    after_paths = [p for p in list(after_frames or [])[:3] if p is not None]
+    content = [text_part(
+        "You are checking whether two phone walkthroughs of the same room cover the same parts of the room. "
+        "Images are labelled BEFORE frame i and AFTER frame i; camera viewpoints and order may differ. "
+        "Judge which areas/corners/landmarks (e.g. 'bathroom door corner', 'window wall', 'bedside') are visible "
+        "in one walkthrough but not the other. Return STRICT JSON only, no markdown: "
+        '{"score": 0.0, "missing_in_after": ["area str"], "missing_in_before": ["area str"], "retake_tip": "str"} '
+        "with score in 0..1 (1 = both walkthroughs cover essentially the same parts of the room, 0 = almost no "
+        "overlap). retake_tip is one short plain sentence telling the filmer what to re-film if coverage differs, "
+        "or an empty string if coverage is good.")]
+    for i, p in enumerate(before_paths):
+        content.append(text_part(f"BEFORE frame {i}"))
+        try:
+            content.append(image_part(p))
+        except Exception as e:
+            log.warning("check_coverage: skipping unreadable keyframe %s: %s", p, e)
+    for i, p in enumerate(after_paths):
+        content.append(text_part(f"AFTER frame {i}"))
+        try:
+            content.append(image_part(p))
+        except Exception as e:
+            log.warning("check_coverage: skipping unreadable keyframe %s: %s", p, e)
+    default = {"score": 1.0, "missing_in_after": [], "missing_in_before": [], "retake_tip": ""}
+    try:
+        d = _call_json(content, max_tokens=1500, what="check_coverage")
+        if not isinstance(d, dict):
+            raise ValueError("parsed JSON is not an object")
+    except Exception as e:
+        log.warning("check_coverage failed: %s", e)
+        return dict(default)
+    try:
+        score = float(d.get("score", 1.0) or 0.0)
+    except Exception:
+        score = 1.0
+    score = max(0.0, min(1.0, score))
+    def _areas(v) -> list[str]:
+        if isinstance(v, str):
+            v = [v]
+        if not isinstance(v, (list, tuple)):
+            return []
+        return [str(a).strip() for a in v if str(a).strip()]
+    return {"score": score,
+            "missing_in_after": _areas(d.get("missing_in_after")),
+            "missing_in_before": _areas(d.get("missing_in_before")),
+            "retake_tip": str(d.get("retake_tip", "") or "")}
+
+def propose_floor_items(after_frames: list) -> list[dict]:
+    """Propose up to 6 specific objects lying ON THE FLOOR in a walking path.
+
+    Looks only at AFTER keyframes. Returns [{"concept": str, "where": str}]
+    (concept = short singular noun phrase SAM can segment). [] on failure.
+    These are proposals only — the pipeline grounds each with SAM before
+    keeping it.
+    """
+    paths = [p for p in list(after_frames or []) if p is not None]
+    content = [text_part(
+        "You are doing a caregiver fall-safety check of an older adult's room from AFTER-walkthrough keyframes. "
+        "List up to 6 SPECIFIC objects lying ON THE FLOOR in a walking path (the route someone walks, e.g. door to "
+        "bed to bathroom door) — things that could trip someone: shoes, bags, boxes, cables, laundry, books, etc. "
+        "Only list objects you can actually see on the floor in these frames; do NOT list furniture, rugs that lie "
+        "flat, or objects on tables/beds/shelves. Use a short singular noun phrase a segmentation model can find "
+        "for 'concept', and say where it lies in 'where' (e.g. 'on the floor beside the bed, in the walking path'). "
+        'Return STRICT JSON only, no markdown: {"items": [{"concept": "shoes", "where": "str"}]}. '
+        "If nothing is on the floor in a walking path, return {\"items\": []}.")]
+    for i, p in enumerate(paths):
+        content.append(text_part(f"AFTER frame {i}"))
+        try:
+            content.append(image_part(p))
+        except Exception as e:
+            log.warning("propose_floor_items: skipping unreadable keyframe %s: %s", p, e)
+    try:
+        d = _call_json(content, max_tokens=1500, what="propose_floor_items")
+        raw = d.get("items", []) if isinstance(d, dict) else d
+    except Exception as e:
+        log.warning("propose_floor_items failed: %s", e)
+        return []
+    if not isinstance(raw, (list, tuple)):
+        raw = []
+    out, seen = [], set()
+    for item in raw:
+        if isinstance(item, str):
+            item = {"concept": item, "where": ""}
+        if not isinstance(item, dict):
+            continue
+        concept = " ".join(str(item.get("concept", "") or "").strip().lower().split())
+        if not concept or concept in seen:
+            continue
+        seen.add(concept)
+        out.append({"concept": concept, "where": str(item.get("where", "") or "")})
+        if len(out) >= 6:
+            break
+    return out
+
+# Aliases (same floor-clutter proposer under other plausible names).
+floor_clutter_items = propose_floor_items
+propose_floor_clutter = propose_floor_items
+list_floor_items = propose_floor_items
+coverage_check = check_coverage
+
 def suggest_aliases(concept, keyframe_paths) -> list[str]:
     """Suggest up to 3 SAM-friendly alternative names for ``concept``.
 

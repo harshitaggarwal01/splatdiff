@@ -1,6 +1,6 @@
 "use strict";
 
-/* Second Look front-end (engine: SplatDiff). Vanilla JS, same-origin API per build_log/UI_CONTRACT.md. */
+/* Second Look front-end (engine: SplatDiff). Vanilla JS, same-origin API per build_log/UI_CONTRACT.md + CONTRACT_V3.md. */
 
 const $ = (id) => document.getElementById(id);
 
@@ -12,6 +12,15 @@ const els = {
   historyDrawer: $("historyDrawer"),
   historyClose: $("historyClose"),
   historyList: $("historyList"),
+  roomInput: $("roomInput"),
+  filmedByInput: $("filmedByInput"),
+  baselineRow: $("baselineRow"),
+  baselineCheck: $("baselineCheck"),
+  baselineLabel: $("baselineLabel"),
+  baselineNote: $("baselineNote"),
+  baselineActiveNote: $("baselineActiveNote"),
+  wrapBefore: $("wrapBefore"),
+  wrapAfter: $("wrapAfter"),
   dropBefore: $("dropBefore"),
   dropAfter: $("dropAfter"),
   fileBefore: $("fileBefore"),
@@ -22,6 +31,19 @@ const els = {
   dropAfterEmpty: $("dropAfterEmpty"),
   fileNameBefore: $("fileNameBefore"),
   fileNameAfter: $("fileNameAfter"),
+  recordBtnBefore: $("recordBtnBefore"),
+  recordBtnAfter: $("recordBtnAfter"),
+  recordPanelBefore: $("recordPanelBefore"),
+  recordPanelAfter: $("recordPanelAfter"),
+  camPreviewBefore: $("camPreviewBefore"),
+  camPreviewAfter: $("camPreviewAfter"),
+  camStopBefore: $("camStopBefore"),
+  camStopAfter: $("camStopAfter"),
+  camTimerBefore: $("camTimerBefore"),
+  camTimerAfter: $("camTimerAfter"),
+  camStatusBefore: $("camStatusBefore"),
+  camStatusAfter: $("camStatusAfter"),
+  keepMediaCheck: $("keepMediaCheck"),
   sampleNote: $("sampleNote"),
   tagBox: $("tagBox"),
   tagList: $("tagList"),
@@ -46,6 +68,8 @@ const els = {
   retryBtn: $("retryBtn"),
   reportSection: $("reportSection"),
   attentionBanner: $("attentionBanner"),
+  coveragePanel: $("coveragePanel"),
+  privacyLine: $("privacyLine"),
   printHeader: $("printHeader"),
   reportSummary: $("reportSummary"),
   reportStats: $("reportStats"),
@@ -62,6 +86,10 @@ const els = {
   copyBtnText: $("copyBtnText"),
   shareBtn: $("shareBtn"),
   shareBtnText: $("shareBtnText"),
+  reminderLink: $("reminderLink"),
+  deleteCheckBtn: $("deleteCheckBtn"),
+  deleteCheckText: $("deleteCheckText"),
+  deleteCheckStatus: $("deleteCheckStatus"),
 };
 
 const state = {
@@ -89,11 +117,18 @@ const state = {
   recorderChunks: [],
   recorderTimer: null,
   recorderStartedAt: 0,
+  rooms: [],
+  roomKeyApplied: "",
+  cam: null,
+  deleteArmed: false,
+  deleteTimer: null,
 };
 
 const ICON_X = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>';
 const ICON_EYE = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
 const ICON_CHECK = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>';
+const ICON_HOME = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-6h6v6"/></svg>';
+const ICON_TRASH = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
 
 function escapeHtml(value) {
   return String(value == null ? "" : value)
@@ -109,6 +144,7 @@ function fmtCost(v) { return "$" + (isNum(v) ? v : 0).toFixed(2); }
 function fmtSeconds(v) { return (isNum(v) ? v : 0).toFixed(1) + " s"; }
 function fmtConf(v) { return isNum(v) ? v.toFixed(2) : "—"; }
 function fmtCount(v) { return isNum(v) ? String(v) : "—"; }
+function plural(n, one, many) { return n === 1 ? one : many; }
 function capitalise(s) {
   const t = String(s == null ? "" : s).trim();
   return t ? t.charAt(0).toUpperCase() + t.slice(1) : "";
@@ -120,6 +156,71 @@ function sentenceCase(s) {
 function reducedMotion() {
   return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
+function roomValue() {
+  const v = els.roomInput ? els.roomInput.value.trim().replace(/\s+/g, " ") : "";
+  return v || "Bedroom";
+}
+function changeLabel(change) {
+  const c = String(change || "").toLowerCase().replace(/-/g, "_");
+  if (c === "on_floor" || c === "onfloor" || c === "floor") return "on the floor";
+  return c.replace(/_/g, " ");
+}
+
+/* Text from a trend value, whether it arrives as a string or an object. */
+function trendTextFrom(value) {
+  if (typeof value === "string") return value.trim();
+  if (value && typeof value === "object") {
+    const t = value.trend || value.sentence || value.text || value.summary || value.line || "";
+    return typeof t === "string" ? t.trim() : "";
+  }
+  return "";
+}
+
+/* Concepts Dad said he moved on purpose, from any backend shape. */
+function intentionalItemsFrom(source) {
+  const out = [];
+  if (!source || typeof source !== "object") return out;
+  const pools = [source.intentional, source.intentional_items, source.intentional_moves,
+    source.dad_moved, source.on_purpose, source.intentional_concepts];
+  pools.forEach((pool) => {
+    if (pool == null || pool === false) return;
+    if (typeof pool === "string") { out.push({ concept: pool, quote: "" }); return; }
+    if (!Array.isArray(pool)) pool = [pool];
+    pool.forEach((item) => {
+      if (typeof item === "string") { out.push({ concept: item, quote: "" }); return; }
+      if (item && typeof item === "object") {
+        const concept = item.concept || item.item || item.name || item.object || "";
+        if (concept) out.push({ concept: String(concept), quote: String(item.quote || item.dad_says || item.text || "") });
+      }
+    });
+  });
+  if (Array.isArray(source.items)) {
+    source.items.forEach((item) => {
+      if (item && typeof item === "object" && (item.intentional === true || item.intentional)) {
+        const concept = item.concept || item.item || item.name || "";
+        if (concept) out.push({ concept: String(concept), quote: String(item.quote || item.dad_says || "") });
+      }
+    });
+  }
+  const seen = new Set();
+  return out.filter((x) => {
+    const k = x.concept.toLowerCase();
+    if (!x.concept || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+function intentionalInfo(claim) {
+  if (!claim || typeof claim !== "object") return null;
+  const raw = claim.intentional;
+  if (!raw) return null;
+  if (typeof raw === "string") return { quote: raw };
+  if (typeof raw === "object") {
+    return { quote: String(raw.quote || raw.dad_says || raw.text || claim.quote || claim.dad_says || "") };
+  }
+  return { quote: String(claim.quote || claim.dad_says || claim.intentional_quote || claim.voice_quote || "") };
+}
 
 /* Remove SAM box/coordinate/confidence fragments from Spark prose, then tidy. */
 function cleanExplanation(value) {
@@ -127,7 +228,6 @@ function cleanExplanation(value) {
   s = s.replace(/\bbox\s*\[[^\]]*\]/gi, "");
   s = s.replace(/\[\s*\d+(?:\s*,\s*\d+){2,}\s*\]/g, "");
   s = s.replace(/\(\s*(?:conf|confidence)\b[^)]*\)/gi, "");
-  /* Leftover coordinate-removal fragments, e.g. "with best at,", "best at", "at conf 0.87". */
   s = s.replace(/\bwith\s+best\s+at\b[^,.;!?]*/gi, "");
   s = s.replace(/\bbest\s+at\b[^,.;!?]*/gi, "");
   s = s.replace(/\bat\s+conf(?:idence)?\b\s*[:=]?\s*\d+(?:\.\d+)?/gi, "");
@@ -162,6 +262,12 @@ function fmtShareDate(result) {
   const d = parseRunDate(result && result.run_id) || new Date();
   return d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
 }
+function fmtIsoDate(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
 
 function initDate() {
   const now = new Date();
@@ -169,6 +275,74 @@ function initDate() {
   els.todayDate.textContent = now.toLocaleDateString(undefined, {
     weekday: "short", day: "numeric", month: "short", year: "numeric",
   });
+}
+
+function updateReminderLink(room) {
+  if (!els.reminderLink) return;
+  els.reminderLink.href = "/api/reminder.ics?room=" + encodeURIComponent(room || roomValue()) + "&every=14";
+}
+
+/* ---------------- Rooms & baseline ---------------- */
+
+function roomEntryFor(name) {
+  const wanted = String(name || "").trim().toLowerCase();
+  if (!wanted) return null;
+  return state.rooms.find((r) => r && String(r.room || "").trim().toLowerCase() === wanted) || null;
+}
+
+function baselineActive() {
+  if (state.sampleMode) return false;
+  if (!els.baselineCheck || els.baselineRow.hidden || !els.baselineCheck.checked) return false;
+  const entry = roomEntryFor(roomValue());
+  return !!(entry && entry.baseline);
+}
+
+function applyBaselineVisibility() {
+  const active = baselineActive();
+  if (els.wrapBefore) els.wrapBefore.hidden = active;
+  if (els.baselineActiveNote) {
+    els.baselineActiveNote.hidden = !active;
+    if (active) {
+      const entry = roomEntryFor(roomValue());
+      const date = entry && entry.baseline ? fmtIsoDate(entry.baseline.date) : "";
+      els.baselineActiveNote.textContent = "Last visit: using the saved setup" +
+        (date ? " from " + date : "") + " for " + roomValue() + ". Untick above to film a new last-visit video instead.";
+    }
+  }
+  updateRunButton();
+}
+
+function updateBaselineUi(forceCheck) {
+  const entry = roomEntryFor(roomValue());
+  const has = !!(entry && entry.baseline);
+  if (!els.baselineRow) return;
+  els.baselineRow.hidden = !has;
+  if (has) {
+    const date = fmtIsoDate(entry.baseline.date);
+    els.baselineLabel.textContent = "Compare with the saved setup" + (date ? " from " + date : "");
+    els.baselineNote.textContent = date ? "" : "";
+    const key = roomValue().toLowerCase();
+    if (forceCheck || state.roomKeyApplied !== key) {
+      els.baselineCheck.checked = true;
+      state.roomKeyApplied = key;
+    }
+  } else {
+    els.baselineCheck.checked = false;
+    state.roomKeyApplied = "";
+  }
+  applyBaselineVisibility();
+}
+
+async function loadRooms(forceCheck) {
+  try {
+    const resp = await fetch("/api/rooms");
+    if (!resp.ok) return;
+    const data = await resp.json();
+    state.rooms = Array.isArray(data) ? data : (Array.isArray(data.rooms) ? data.rooms : []);
+  } catch (e) {
+    state.rooms = state.rooms || [];
+  }
+  updateBaselineUi(forceCheck);
 }
 
 /* ---------------- Watchlist tags ---------------- */
@@ -191,7 +365,7 @@ function renderTags(highlightName) {
 }
 
 function addTag(raw, highlight) {
-  const name = String(raw || "").trim().replace(/\s+/g, " ");
+  const name = String(raw == null || typeof raw === "object" ? (raw && (raw.concept || raw.item || raw.name)) || "" : raw).trim().replace(/\s+/g, " ");
   if (!name) return false;
   if (state.tags.some((t) => t.toLowerCase() === name.toLowerCase())) return false;
   state.tags.push(name);
@@ -231,8 +405,9 @@ function initTags() {
 /* ---------------- Video intake ---------------- */
 
 function updateRunButton() {
+  const usingBaseline = baselineActive();
   const ready = !state.running &&
-    (state.sampleMode || (state.beforeFile && state.afterFile));
+    (state.sampleMode || (state.afterFile && (usingBaseline || state.beforeFile)));
   els.runBtn.disabled = !ready;
 }
 
@@ -306,6 +481,134 @@ function initDropzone(side) {
   });
 }
 
+/* ---------------- Record with this phone ---------------- */
+
+function camEls(side) {
+  return side === "before" ? {
+    btn: els.recordBtnBefore, panel: els.recordPanelBefore, preview: els.camPreviewBefore,
+    stop: els.camStopBefore, timer: els.camTimerBefore, status: els.camStatusBefore,
+  } : {
+    btn: els.recordBtnAfter, panel: els.recordPanelAfter, preview: els.camPreviewAfter,
+    stop: els.camStopAfter, timer: els.camTimerAfter, status: els.camStatusAfter,
+  };
+}
+
+function setCamStatus(side, msg, isError) {
+  const c = camEls(side);
+  c.status.hidden = !msg;
+  c.status.textContent = msg || "";
+  c.status.classList.toggle("record-status-error", !!isError);
+}
+
+function cleanupCam() {
+  const cam = state.cam;
+  if (!cam) return;
+  if (cam.timer) window.clearInterval(cam.timer);
+  if (cam.timeout) window.clearTimeout(cam.timeout);
+  if (cam.stream) cam.stream.getTracks().forEach((t) => t.stop());
+  const c = camEls(cam.side);
+  c.preview.srcObject = null;
+  c.panel.hidden = true;
+  c.btn.setAttribute("aria-expanded", "false");
+  c.btn.disabled = false;
+  state.cam = null;
+}
+
+function stopCamRecording() {
+  const cam = state.cam;
+  if (cam && cam.recorder && cam.recorder.state !== "inactive") cam.recorder.stop();
+}
+
+async function startCamRecording(side) {
+  if (state.cam) { stopCamRecording(); return; }
+  const c = camEls(side);
+  setCamStatus(side, "", false);
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === "undefined") {
+    c.panel.hidden = false;
+    setCamStatus(side, "This browser cannot record video. You can choose a walkthrough video from this phone instead.", true);
+    c.btn.setAttribute("aria-expanded", "true");
+    return;
+  }
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+  } catch (err) {
+    c.panel.hidden = false;
+    c.btn.setAttribute("aria-expanded", "true");
+    if (err && (err.name === "NotAllowedError" || err.name === "SecurityError")) {
+      setCamStatus(side, "Camera permission was denied. Allow camera access in your browser, or choose a walkthrough video from this phone instead.", true);
+    } else if (err && err.name === "NotFoundError") {
+      setCamStatus(side, "No camera could be found on this device. You can choose a walkthrough video instead.", true);
+    } else {
+      setCamStatus(side, "The camera could not be started. You can choose a walkthrough video instead.", true);
+    }
+    c.btn.focus();
+    return;
+  }
+
+  const mimeType = ["video/webm", "video/mp4", ""].find((t) => {
+    try { return !t || MediaRecorder.isTypeSupported(t); } catch (e) { return false; }
+  }) || "";
+  let recorder;
+  try {
+    recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+  } catch (err) {
+    stream.getTracks().forEach((t) => t.stop());
+    c.panel.hidden = false;
+    setCamStatus(side, "Recording is not supported in this browser. You can choose a walkthrough video instead.", true);
+    return;
+  }
+
+  const cam = {
+    side, stream, recorder, chunks: [], mimeType,
+    startedAt: Date.now(), timer: null, timeout: null,
+  };
+  state.cam = cam;
+  recorder.addEventListener("dataavailable", (ev) => {
+    if (ev.data && ev.data.size) cam.chunks.push(ev.data);
+  });
+  recorder.addEventListener("stop", () => {
+    const type = recorder.mimeType || cam.mimeType || "video/webm";
+    const blob = new Blob(cam.chunks, { type });
+    const ext = type.includes("mp4") ? "mp4" : "webm";
+    cleanupCam();
+    if (blob.size) {
+      const file = new File([blob], "second-look-" + side + "." + ext, { type, lastModified: Date.now() });
+      setFile(side, file);
+      setCamStatus(side, "Recorded — this is now the " + (side === "before" ? "last-visit" : "today") + " walkthrough.", false);
+      camEls(side).panel.hidden = false;
+      window.setTimeout(() => { camEls(side).panel.hidden = true; }, 4000);
+    } else {
+      setCamStatus(side, "That recording was empty. Please try again.", true);
+      camEls(side).panel.hidden = false;
+    }
+    camEls(side).btn.focus();
+  });
+
+  c.preview.srcObject = stream;
+  c.panel.hidden = false;
+  c.btn.setAttribute("aria-expanded", "true");
+  c.btn.disabled = true;
+  c.timer.textContent = "0:00";
+  try { await c.preview.play(); } catch (e) { /* preview still shows via autoplay */ }
+  recorder.start();
+  cam.timer = window.setInterval(() => {
+    c.timer.textContent = fmtTimer((Date.now() - cam.startedAt) / 1000);
+  }, 250);
+  cam.timeout = window.setTimeout(stopCamRecording, 20000);
+  setCamStatus(side, "Recording — follow the route on screen. It stops on its own after 20 seconds.", false);
+  c.stop.focus();
+}
+
+function initRecording() {
+  ["before", "after"].forEach((side) => {
+    const c = camEls(side);
+    if (!c.btn) return;
+    c.btn.addEventListener("click", () => startCamRecording(side));
+    c.stop.addEventListener("click", stopCamRecording);
+  });
+}
+
 /* ---------------- Sample ---------------- */
 
 async function loadSample() {
@@ -320,6 +623,9 @@ async function loadSample() {
     state.sampleLabel = data.label || "Sample room";
     state.beforeFile = null;
     state.afterFile = null;
+    if (els.baselineCheck) els.baselineCheck.checked = false;
+    if (els.wrapBefore) els.wrapBefore.hidden = false;
+    if (els.baselineActiveNote) els.baselineActiveNote.hidden = true;
     setVideoSide("before", null, data.before, data.before.split("/").pop());
     setVideoSide("after", null, data.after, data.after.split("/").pop());
     if (Array.isArray(data.watchlist) && data.watchlist.length) {
@@ -361,6 +667,34 @@ function stopRecorderUi() {
   els.voiceBtnText.textContent = "Speak your care notes";
 }
 
+function voiceIntentionalEl() {
+  let el = $("voiceIntentional");
+  if (!el && els.voiceQuote && els.voiceQuote.parentNode) {
+    el = document.createElement("div");
+    el.id = "voiceIntentional";
+    el.className = "voice-intentional";
+    els.voiceQuote.parentNode.insertBefore(el, els.voiceQuote.nextSibling);
+  }
+  return el;
+}
+
+function showVoiceIntentional(source) {
+  const items = intentionalItemsFrom(source);
+  const el = voiceIntentionalEl();
+  if (!el) return items;
+  el.innerHTML = "";
+  el.hidden = !items.length;
+  items.forEach((item) => {
+    const p = document.createElement("p");
+    p.className = "voice-intentional-line";
+    p.style.color = "var(--moss)";
+    p.style.margin = "8px 0 0";
+    p.textContent = "Dad says he moved the " + item.concept + " on purpose";
+    el.appendChild(p);
+  });
+  return items;
+}
+
 async function sendVoiceNote(blob, mimeType) {
   const ext = mimeType.includes("ogg") ? "ogg" : mimeType.includes("wav") ? "wav" :
     mimeType.includes("mp4") ? "mp4" : "webm";
@@ -375,6 +709,7 @@ async function sendVoiceNote(blob, mimeType) {
       els.voiceQuote.hidden = false;
       els.voiceQuoteText.textContent = "“" + data.transcript + "”";
     }
+    showVoiceIntentional(data);
     let added = 0;
     if (Array.isArray(data.items)) {
       data.items.forEach((item) => { if (addTag(item, true)) added += 1; });
@@ -452,13 +787,17 @@ const STAGE_DEFS = [
   { id: "voice", title: "Listening to your notes", model: "muse-voice-transcribe-1.0", detail: "", optional: true },
   { id: "normalize", title: "Preparing both walkthroughs", model: "ffmpeg", detail: "5 fps, 640 px" },
   { id: "keyframes", title: "Picking the moments to compare", model: "ffmpeg", detail: "" },
+  { id: "privacy", title: "Blurring people and papers", model: "sam-3.1", detail: "" },
   { id: "inventory", title: "Taking inventory of the room", model: "muse-spark-1.3", detail: "" },
+  { id: "coverage", title: "Checking both walkthroughs cover the same room", model: "muse-spark-1.3", detail: "" },
   { id: "track", title: "Tracking every object in both videos", model: "sam-3.1", detail: "" },
+  { id: "floor", title: "Checking the floor and walking path", model: "muse-spark-1.3 + sam-3.1", detail: "" },
   { id: "repair", title: "Learning the family's words", model: "muse-spark-1.3 + sam-3.1", detail: "", optional: true },
   { id: "recheck", title: "Double-checking anything that appeared or vanished", model: "sam-3.1", detail: "" },
   { id: "judge", title: "Deciding what actually moved", model: "muse-spark-1.3", detail: "" },
   { id: "report", title: "Writing the findings", model: "muse-spark-1.3", detail: "" },
   { id: "filter", title: "Holding every claim to its evidence", model: "grounding filter", detail: "" },
+  { id: "trend", title: "Looking across past checks", model: "muse-wonder-1.0", detail: "", optional: true },
 ];
 
 function renderStage(def) {
@@ -648,6 +987,30 @@ function markTrack(event) {
 function sideWords(video) {
   return video === "after" ? "today" : video === "before" ? "last visit" : "";
 }
+function coveragePct(score) {
+  if (!isNum(score)) return null;
+  return Math.round(score <= 1 ? score * 100 : score);
+}
+
+function secondOpinionFrom(event) {
+  const op = (event && (event.second_opinion || event.secondOpinion || event.wonder ||
+    event.escalation || event.wonder_verdict)) || null;
+  const opObj = op && typeof op === "object" ? op : {};
+  let moved = null;
+  if (typeof event.wonder_moved === "boolean") moved = event.wonder_moved;
+  else if (typeof event.second_moved === "boolean") moved = event.second_moved;
+  else if (typeof event.escalated_moved === "boolean") moved = event.escalated_moved;
+  else if (typeof opObj.moved === "boolean") moved = opObj.moved;
+  else if (typeof op === "boolean") moved = op;
+  let conf = null;
+  if (isNum(event.wonder_confidence)) conf = event.wonder_confidence;
+  else if (isNum(event.second_confidence)) conf = event.second_confidence;
+  else if (isNum(event.escalated_confidence)) conf = event.escalated_confidence;
+  else if (isNum(opObj.confidence)) conf = opObj.confidence;
+  else if (isNum(opObj.c)) conf = opObj.c;
+  else if (isNum(event.wonder_c)) conf = event.wonder_c;
+  return { moved, confidence: conf, model: "muse-wonder-1.0" };
+}
 
 /* ---------------- SSE handling ---------------- */
 
@@ -660,9 +1023,18 @@ function handleEvent(event) {
   if (stage === "voice") {
     noteModel(event.model || "muse-voice-transcribe-1.0");
     setStage("voice", status === "error" ? "error" : "done");
+    const intentional = intentionalItemsFrom(event);
     if (event.transcript) {
       stageLines("voice").innerHTML = "";
       addStageLine("voice", '<span class="voice-line">“' + escapeHtml(event.transcript) + "”</span>");
+      intentional.forEach((item) => {
+        addStageLine("voice", "Dad says he moved the " + escapeHtml(item.concept) + " on purpose");
+      });
+    } else if (intentional.length) {
+      intentional.forEach((item) => {
+        addStageLine("voice", "Dad says he moved the " + escapeHtml(item.concept) + " on purpose");
+      });
+      setStage("voice", "done");
     } else if (Array.isArray(event.items) && event.items.length) {
       setStage("voice", "done", event.items.join(", "));
     }
@@ -700,11 +1072,38 @@ function handleEvent(event) {
 
   if (stage === "keyframes" && status === "done") renderFilmstrips(event);
 
+  if (stage === "privacy") {
+    noteModel("sam-3.1");
+    if (status === "done") {
+      const people = isNum(event.people_blurred) ? event.people_blurred : 0;
+      const docs = isNum(event.documents_blurred) ? event.documents_blurred : 0;
+      const bits = [];
+      bits.push(people + " " + plural(people, "person", "people") + " blurred");
+      if (docs) bits.push(docs + " " + plural(docs, "paper", "papers") + " blurred");
+      setStage("privacy", "done", bits.join(" · "));
+    }
+  }
+
   if (stage === "inventory") {
     if (Array.isArray(event.concepts) && event.concepts.length) mergeInventoryConcepts(event.concepts);
     if (status === "done" && Array.isArray(event.concepts) && event.concepts.length) {
       setStage("inventory", "done", state.inventoryConcepts.length + (state.inventoryConcepts.length === 1 ? " object" : " objects") + " to track");
       renderConceptChips(event.concepts);
+    }
+  }
+
+  if (stage === "coverage") {
+    noteModel("muse-spark-1.3");
+    if (status === "done") {
+      const pct = coveragePct(event.score);
+      let detail = pct != null ? pct + "%" : "";
+      const missing = []
+        .concat(Array.isArray(event.missing_in_after) ? event.missing_in_after : [])
+        .concat(Array.isArray(event.missing_in_before) ? event.missing_in_before : []);
+      const area = missing.length ? missing[0] : (event.retake_tip && event.ok === false ? event.retake_tip : "");
+      if (area) detail += (detail ? " · " : "") + "re-film: " + area;
+      else if (event.retake_tip && event.ok === false) detail += (detail ? " · " : "") + event.retake_tip;
+      setStage("coverage", "done", detail || "Done");
     }
   }
 
@@ -728,6 +1127,18 @@ function handleEvent(event) {
       updateTrackCount();
     }
     if (status === "done") setStage("track", "done", state.trackTotal ? state.trackTotal + " tracks finished" : "Tracking finished");
+  }
+
+  if (stage === "floor") {
+    noteModel("muse-spark-1.3");
+    noteModel("sam-3.1");
+    if (status === "done") {
+      const kept = isNum(event.kept) ? event.kept : (Array.isArray(event.items) ? event.items.length : 0);
+      setStage("floor", "done", kept + " on the floor");
+    } else if (status === "progress" && event.concept) {
+      addStageLine("floor", escapeHtml(capitalise(event.concept)) +
+        (event.kept === false || event.found === false ? " — not confirmed on the floor" : " — on the floor"));
+    }
   }
 
   if (stage === "repair") {
@@ -780,8 +1191,33 @@ function handleEvent(event) {
       (event.moved ? "moved" : "stayed") +
       (isNum(conf) ? ' <span class="mono">' + conf.toFixed(2) + "</span>" : "") +
       (event.reason ? ' <span>· ' + escapeHtml(event.reason) + "</span>" : ""));
+    if (event.escalated === true || event.escalated === "true") {
+      noteModel("muse-wonder-1.0");
+      const op = secondOpinionFrom(event);
+      const word = op.moved === false ? "stayed" : "moved";
+      addStageLine("judge",
+        escapeHtml(capitalise(event.concept || "Object")) +
+        ' — second opinion from <span class="mono">muse-wonder-1.0</span>: ' + word +
+        (isNum(op.confidence) ? ' <span class="mono">' + op.confidence.toFixed(2) + "</span>" : ""));
+    }
   }
   if (stage === "judge" && status === "done") setStage("judge", "done");
+
+  if (stage === "trend") {
+    noteModel("muse-wonder-1.0");
+    const sentence = trendTextFrom(event.trend) || trendTextFrom(event.sentence) ||
+      trendTextFrom(event.text) || trendTextFrom(event.summary) || trendTextFrom(event);
+    if (sentence) {
+      setStage("trend", status === "done" ? "done" : "active", sentence);
+      if (status === "done" || status === "progress") {
+        const lines = stageLines("trend");
+        if (!lines.textContent.includes(sentence)) addStageLine("trend", escapeHtml(sentence));
+      }
+    } else if (status === "done") {
+      setStage("trend", "done");
+    }
+    updateLedger(null);
+  }
 
   if (stage === "report" && status === "done") {
     setStage("report", "done", isNum(event.raw_claims) ? event.raw_claims + " claims suggested" : "");
@@ -812,6 +1248,7 @@ function finishRun(scrollToReport) {
   closeEvents();
   state.running = false;
   updateRunButton();
+  loadRooms(false);
   Array.from(state.stageRows.values()).forEach((row) => {
     if (row.dataset.status === "active") row.dataset.status = "done";
   });
@@ -834,8 +1271,17 @@ function hideRunError() {
 async function startRun() {
   if (state.running) return;
   hideRunError();
-  if (!state.sampleMode && (!state.beforeFile || !state.afterFile)) {
+  const usingBaseline = baselineActive();
+  if (!state.sampleMode && !usingBaseline && (!state.beforeFile || !state.afterFile)) {
     showRunError("Choose both walkthrough videos first — one from the last visit and one from today.");
+    return;
+  }
+  if (!state.sampleMode && usingBaseline && !state.afterFile) {
+    showRunError("Choose or record today's walkthrough video first.");
+    return;
+  }
+  if (!state.sampleMode && !usingBaseline && state.beforeFile && !state.afterFile) {
+    showRunError("Choose or record today's walkthrough video first.");
     return;
   }
 
@@ -843,9 +1289,17 @@ async function startRun() {
   if (state.sampleMode) {
     form.append("sample", "1");
   } else {
-    form.append("before", state.beforeFile);
+    if (usingBaseline) {
+      form.append("baseline", "1");
+    } else {
+      form.append("before", state.beforeFile);
+    }
     form.append("after", state.afterFile);
   }
+  form.append("room", roomValue());
+  const filmedBy = els.filmedByInput ? els.filmedByInput.value.trim() : "";
+  if (filmedBy) form.append("filmed_by", filmedBy);
+  if (els.keepMediaCheck && els.keepMediaCheck.checked) form.append("keep_media", "1");
   form.append("watchlist", state.tags.join(","));
   form.append("narration", els.narrationCheck.checked ? "1" : "");
 
@@ -862,7 +1316,7 @@ async function startRun() {
     const resp = await fetch("/api/runs", { method: "POST", body: form });
     if (!resp.ok) {
       let detail = "";
-      try { const j = await resp.json(); detail = j.detail || j.message || ""; } catch (e) { /* keep status text */ }
+      try { const j = await resp.json(); detail = j.detail || j.error || j.message || ""; } catch (e) { /* keep status text */ }
       throw new Error(detail || "The check could not be started (" + resp.status + ").");
     }
     const data = await resp.json();
@@ -987,6 +1441,7 @@ function claimImages(claim, result) {
       out.before = normalizeImageUrl(claim.images.before) || null;
       out.after = normalizeImageUrl(claim.images.after) || null;
     }
+    if (claim && claim.image) out.after = out.after || normalizeImageUrl(claim.image);
     if (claim && claim.evidence && claim.evidence.images) {
       out.before = out.before || normalizeImageUrl(claim.evidence.images.before);
       out.after = out.after || normalizeImageUrl(claim.evidence.images.after);
@@ -1025,7 +1480,7 @@ function claimImages(claim, result) {
           if (!u) return;
           const low = u.toLowerCase();
           if (!out.before && low.includes("/before_" + underscored + ".")) out.before = u;
-          if (!out.after && low.includes("/after_" + underscored + ".")) out.after = u;
+          if (!out.after && (low.includes("/after_" + underscored + ".") || low.includes("/floor_" + underscored + "."))) out.after = u;
         });
       }
     }
@@ -1086,8 +1541,10 @@ function evidenceDisclosure(claim, result) {
 }
 
 function changeClass(change) {
-  const c = String(change || "").toLowerCase();
-  return c === "added" || c === "removed" || c === "moved" ? "change-" + c : "";
+  const c = String(change || "").toLowerCase().replace(/-/g, "_");
+  if (c === "added" || c === "removed" || c === "moved") return "change-" + c;
+  if (c === "on_floor") return "change-on-floor";
+  return "";
 }
 
 function trackedAsHtml(result, concept) {
@@ -1100,7 +1557,7 @@ function trackedAsHtml(result, concept) {
 
 function doNextSteps(kind, conceptRaw) {
   const concept = String(conceptRaw == null ? "" : conceptRaw).trim().replace(/\s+/g, " ").toLowerCase() || "item";
-  const k = String(kind || "").toLowerCase();
+  const k = String(kind || "").toLowerCase().replace(/-/g, "_");
   if (k === "moved") {
     return [
       "Ask Dad first: did he move the " + concept + " on purpose? If so, that is the new setup — film it as the next baseline.",
@@ -1115,7 +1572,7 @@ function doNextSteps(kind, conceptRaw) {
       "Re-check next visit.",
     ];
   }
-  if (k === "added" || k === "appeared") {
+  if (k === "added" || k === "appeared" || k === "on_floor") {
     return [
       "If the " + concept + " is on the floor or in a walkway, move it out of the path, with Dad.",
       "Check the route from bed to bathroom is clear.",
@@ -1171,7 +1628,6 @@ function makeSortedControl(owner, result, concept) {
     const next = btn.getAttribute("aria-pressed") !== "true";
     writeSorted(result, concept, next);
     applySorted(owner, btn, stateEl, next);
-    /* Sorted items leave the "Needs attention" count (and document title) at once. */
     if (state.currentResult) renderAttentionBanner(state.currentResult);
   });
   return wrap;
@@ -1189,21 +1645,69 @@ function makeDoNext(kind, concept, result, owner) {
   return block;
 }
 
+/* "This is the new setup" -> save this run's AFTER video as the room baseline. */
+function makeBaselineControl(claim, result, isPrimary) {
+  const wrap = document.createElement("div");
+  wrap.className = "baseline-save-row";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = isPrimary ? "btn btn-primary baseline-save-btn" : "btn btn-quiet baseline-save-btn";
+  btn.innerHTML = ICON_HOME + "<span>This is the new setup</span>";
+  const status = document.createElement("span");
+  status.className = "baseline-save-status";
+  status.setAttribute("role", "status");
+  status.setAttribute("aria-live", "polite");
+  wrap.appendChild(btn);
+  wrap.appendChild(status);
+  btn.addEventListener("click", async () => {
+    const runId = (result && result.run_id) || state.runId;
+    const room = (result && result.room) || roomValue();
+    if (!runId) { status.textContent = "This check has no saved video to use as the new setup."; return; }
+    btn.disabled = true;
+    status.textContent = "Saving…";
+    try {
+      const resp = await fetch("/api/baseline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ run_id: runId, room }),
+      });
+      let detail = "";
+      if (!resp.ok) {
+        try { const j = await resp.json(); detail = j.detail || j.error || j.message || ""; } catch (e) { /* status text */ }
+        throw new Error(detail || "The new setup could not be saved (" + resp.status + ").");
+      }
+      status.textContent = "Saved as Dad's new setup for " + room + ".";
+      btn.setAttribute("aria-pressed", "true");
+      loadRooms(true);
+    } catch (err) {
+      status.textContent = err && err.message ? err.message : "The new setup could not be saved. Please try again.";
+      btn.disabled = false;
+    }
+  });
+  return wrap;
+}
+
 function renderFinding(claim, result, index) {
   claim = claim || {};
   const risk = riskOf(claim);
   const change = String(claim.change || "").toLowerCase();
+  const intentional = intentionalInfo(claim);
   const el = document.createElement("article");
   el.className = "finding";
   el.id = attentionTargetId("finding", claim.concept || "object", index);
   el.dataset.concept = String(claim.concept || "");
-  const explanation = cleanExplanation(claim.explanation || "");
+  const explanation = cleanExplanation(claim.explanation || claim.where || "");
+  const intentionalHtml = intentional
+    ? '<p class="intentional-line" style="color: var(--moss); margin: -2px 0 8px; font-weight: 500;">Dad says: “' +
+      escapeHtml(intentional.quote || "I moved it on purpose") + "”</p>"
+    : "";
   el.innerHTML =
     '<div class="finding-top">' +
     '<span class="risk-tag risk-' + risk + '"><span class="risk-dot" aria-hidden="true"></span>' +
     escapeHtml(risk) + " risk</span></div>" +
     '<h4 class="finding-title ' + changeClass(change) + '">' +
-    escapeHtml(sentenceCase(claim.concept || "Object")) + " — " + escapeHtml(change) + "</h4>" +
+    escapeHtml(sentenceCase(claim.concept || "Object")) + " — " + escapeHtml(changeLabel(change)) + "</h4>" +
+    intentionalHtml +
     trackedAsHtml(result, claim.concept) +
     (explanation ? '<p class="finding-text">' + escapeHtml(explanation) + "</p>" : "") +
     (claim.safety_note ? '<p class="finding-note">' + escapeHtml(claim.safety_note) + "</p>" : "") +
@@ -1213,6 +1717,9 @@ function renderFinding(claim, result, index) {
     if (block) el.appendChild(block);
   } else {
     el.appendChild(makeSortedControl(el, result, claim.concept));
+  }
+  if (["moved", "added", "removed"].includes(change.replace(/-/g, "_")) || intentional) {
+    el.appendChild(makeBaselineControl(claim, result, !!intentional));
   }
   return el;
 }
@@ -1226,7 +1733,7 @@ function renderStruck(claim, result, index) {
   el.innerHTML =
     '<h4 class="struck-title"><span class="strike-wrap"><span class="strike-text">' +
     escapeHtml(sentenceCase(claim.concept || "Object")) + " — " +
-    escapeHtml(String(claim.change || "").toLowerCase()) +
+    escapeHtml(changeLabel(claim.change || "")) +
     '</span><svg class="strike-svg" viewBox="0 0 300 12" preserveAspectRatio="none" aria-hidden="true">' +
     '<path class="strike-path" style="--strike-delay:' + delay + 'ms" ' +
     'd="M2 7 C 40 3, 70 11, 110 6 S 180 3, 220 8 S 280 5, 298 7"/></svg></span></h4>' +
@@ -1308,9 +1815,6 @@ function watchAttentionPhrase(statusKey) {
   return "needs attention";
 }
 
-/* Kept HIGH findings + watchlist rows that are HIGH or missing/moved/not_seen,
-   de-duplicated by concept (a concept already listed as a finding is not
-   listed again as a watchlist row). Sorted items stay listed, marked sorted. */
 function collectAttentionItems(result) {
   const items = [];
   const seen = new Set();
@@ -1325,7 +1829,7 @@ function collectAttentionItems(result) {
     items.push({
       concept,
       kind: change,
-      label: sentenceCase(concept) + " — " + change,
+      label: sentenceCase(concept) + " — " + changeLabel(change),
       targetId: attentionTargetId("finding", concept, i),
       sorted: readSorted(result, concept),
     });
@@ -1355,7 +1859,6 @@ function highlightAttentionTarget(targetId) {
   if (!target) return;
   target.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" });
   target.classList.remove("attention-highlight");
-  /* Restart the highlight even if this target was just highlighted. */
   void target.offsetWidth;
   target.classList.add("attention-highlight");
   window.setTimeout(() => target.classList.remove("attention-highlight"), 1900);
@@ -1403,26 +1906,192 @@ function renderAttentionBanner(result) {
   });
 }
 
+/* ---------------- Coverage + privacy lines ---------------- */
+
+function renderCoveragePrivacy(result) {
+  const cov = result && result.coverage && typeof result.coverage === "object" ? result.coverage : null;
+  if (els.coveragePanel) {
+    if (!cov || (cov.score == null && cov.ok == null)) {
+      els.coveragePanel.hidden = true;
+      els.coveragePanel.innerHTML = "";
+    } else {
+      const pct = coveragePct(cov.score);
+      const ok = cov.ok != null ? !!cov.ok : (pct != null ? pct >= 60 : true);
+      els.coveragePanel.hidden = false;
+      if (ok) {
+        els.coveragePanel.className = "coverage-panel is-ok";
+        els.coveragePanel.innerHTML = '<p class="coverage-text">Both walkthroughs covered the same room' +
+          (pct != null ? " (" + pct + "%)." : ".") + "</p>";
+      } else {
+        const tip = cov.retake_tip ? String(cov.retake_tip) : "Re-film the missing corner the same way both times.";
+        els.coveragePanel.className = "coverage-panel is-gap";
+        els.coveragePanel.innerHTML =
+          '<p class="coverage-text">These two walkthroughs don&rsquo;t cover the same corners — ' +
+          escapeHtml(tip) + "</p>" +
+          '<p class="coverage-sub">Findings are still shown below, but anything in the missing corners could not be checked.</p>';
+      }
+    }
+  }
+  const priv = result && result.privacy && typeof result.privacy === "object" ? result.privacy : null;
+  if (els.privacyLine) {
+    if (!priv) {
+      els.privacyLine.hidden = true;
+      els.privacyLine.textContent = "";
+    } else {
+      const people = isNum(priv.people_blurred) ? priv.people_blurred : 0;
+      const docs = isNum(priv.documents_blurred) ? priv.documents_blurred : 0;
+      const kept = result.keep_media === true || result.keep_media === "1";
+      els.privacyLine.textContent =
+        people + " " + plural(people, "person", "people") + " and " +
+        docs + " " + plural(docs, "paper", "papers") +
+        " blurred before anything was stored or reasoned over · " +
+        (kept ? "videos kept, as you asked" : "raw videos deleted");
+      els.privacyLine.hidden = false;
+    }
+  }
+}
+
+function renderTrendLine(result) {
+  const txt = trendTextFrom(result && result.trend);
+  let el = $("reportTrend");
+  if (!el) {
+    if (!txt || !els.reportSummary || !els.reportSummary.parentNode) return;
+    el = document.createElement("p");
+    el.id = "reportTrend";
+    el.className = "report-trend";
+    el.style.fontFamily = "var(--font-display)";
+    el.style.color = "var(--ink-2)";
+    el.style.fontSize = "1.05rem";
+    el.style.lineHeight = "1.5";
+    el.style.margin = "0 0 14px";
+    el.style.maxWidth = "72ch";
+    els.reportSummary.parentNode.insertBefore(el, els.reportSummary.nextSibling);
+  }
+  if (!txt) { el.hidden = true; el.textContent = ""; return; }
+  el.textContent = "Across visits: " + txt;
+  el.hidden = false;
+}
+
+function floorExtraClaims(result, kept) {
+  const floor = result && result.floor_check && typeof result.floor_check === "object" ? result.floor_check : null;
+  if (!floor || !Array.isArray(floor.items)) return [];
+  const have = new Set((kept || []).map((c) =>
+    normConceptKey(c && c.concept) + "|" + String((c && c.change) || "").toLowerCase().replace(/-/g, "_")));
+  const extras = [];
+  floor.items.forEach((item) => {
+    item = item || {};
+    const concept = item.concept || "Object";
+    if (have.has(normConceptKey(concept) + "|on_floor")) return;
+    if ((kept || []).some((c) => normConceptKey(c && c.concept) === normConceptKey(concept))) return;
+    extras.push({
+      concept,
+      change: "on_floor",
+      explanation: item.where || "Seen lying on the floor in today's walkthrough.",
+      risk: item.risk || "medium",
+      risk_reason: item.risk_reason || null,
+      safety_note: item.safety_note || null,
+      source: item.source || "spark+sam",
+      images: { before: null, after: item.image || item.url || null },
+      evidence: {
+        confidence_after: isNum(item.c) ? item.c : item.confidence,
+        label: "on_floor",
+      },
+    });
+  });
+  return extras;
+}
+
+function resetDeleteCheck() {
+  state.deleteArmed = false;
+  if (state.deleteTimer) { window.clearTimeout(state.deleteTimer); state.deleteTimer = null; }
+  if (els.deleteCheckText) els.deleteCheckText.textContent = "Delete this check";
+  if (els.deleteCheckBtn) els.deleteCheckBtn.disabled = false;
+  if (els.deleteCheckStatus) els.deleteCheckStatus.textContent = "";
+}
+
+function clearReport() {
+  state.currentResult = null;
+  state.attentionItems = [];
+  document.title = DEFAULT_TITLE;
+  els.reportSection.hidden = true;
+  els.findingsList.innerHTML = "";
+  els.struckList.innerHTML = "";
+  els.watchlistRows.innerHTML = "";
+  const trendEl = $("reportTrend");
+  if (trendEl) { trendEl.hidden = true; trendEl.textContent = ""; }
+  resetDeleteCheck();
+}
+
+async function deleteCurrentCheck() {
+  const result = state.currentResult;
+  const runId = (result && result.run_id) || state.runId;
+  if (!runId) return;
+  if (!state.deleteArmed) {
+    state.deleteArmed = true;
+    els.deleteCheckText.textContent = "Tap again to delete this check";
+    els.deleteCheckStatus.textContent = "This removes the report and its evidence pictures. It cannot be undone.";
+    els.deleteCheckBtn.focus();
+    state.deleteTimer = window.setTimeout(resetDeleteCheck, 5000);
+    return;
+  }
+  if (state.deleteTimer) { window.clearTimeout(state.deleteTimer); state.deleteTimer = null; }
+  els.deleteCheckBtn.disabled = true;
+  els.deleteCheckStatus.textContent = "Deleting…";
+  try {
+    const resp = await fetch("/api/history/" + encodeURIComponent(runId), { method: "DELETE" });
+    if (!resp.ok) {
+      let detail = "";
+      try { const j = await resp.json(); detail = j.detail || j.error || j.message || ""; } catch (e) { /* status text */ }
+      throw new Error(detail || "This check could not be deleted (" + resp.status + ").");
+    }
+    const deletedId = runId;
+    if (state.runId === deletedId) state.runId = null;
+    clearReport();
+    els.liveSection.hidden = true;
+    if (!els.historyDrawer.hidden) await refreshHistory();
+    document.getElementById("intake").scrollIntoView({
+      behavior: reducedMotion() ? "auto" : "smooth", block: "start",
+    });
+    showRunError("");
+    els.runError.hidden = true;
+    els.runBtn.focus();
+  } catch (err) {
+    els.deleteCheckBtn.disabled = false;
+    els.deleteCheckText.textContent = "Delete this check";
+    state.deleteArmed = false;
+    els.deleteCheckStatus.textContent = err && err.message ? err.message : "This check could not be deleted.";
+  }
+}
+
 function renderReport(result) {
   if (!result || typeof result !== "object") return;
   state.currentResult = result;
   if (result.run_id) state.runId = result.run_id;
-  const kept = Array.isArray(result.kept_claims) ? result.kept_claims
+  resetDeleteCheck();
+  updateReminderLink(result.room || roomValue());
+  const keptRaw = Array.isArray(result.kept_claims) ? result.kept_claims
     : Array.isArray(result.claims) ? result.claims : [];
+  const kept = keptRaw.concat(floorExtraClaims(result, keptRaw));
   const dropped = Array.isArray(result.dropped) ? result.dropped : [];
   const stats = (result.stats && typeof result.stats === "object") ? result.stats : {};
 
+  renderCoveragePrivacy(result);
+
   els.reportSummary.textContent = result.summary ||
     "This check is complete. The findings below are the ones the evidence supports.";
+  renderTrendLine(result);
 
   const conceptCount = isNum(stats.concepts) ? stats.concepts :
     isNum(result.concepts) ? result.concepts :
     (Array.isArray(result.concepts) ? result.concepts.length : kept.length + dropped.length);
   const samRequests = isNum(stats.sam_requests) ? stats.sam_requests :
     isNum(result.sam_requests) ? result.sam_requests : 0;
+  const roomBit = result.room ? " · " + result.room : "";
+  const byBit = result.filmed_by ? " · filmed by " + result.filmed_by : "";
   els.reportStats.textContent =
     "Checked " + conceptCount + (conceptCount === 1 ? " object" : " objects") +
-    " · " + samRequests + " SAM tracks · " + fmtCost(result.cost_usd) + " · " + fmtSeconds(result.latency_s);
+    " · " + samRequests + " SAM tracks · " + fmtCost(result.cost_usd) + " · " + fmtSeconds(result.latency_s) +
+    roomBit + byBit;
 
   const runDate = parseRunDate(result.run_id);
   const printDate = runDate ?
@@ -1458,6 +2127,9 @@ function renderReport(result) {
     ["muse-spark-1.3", "reasons"],
     ["sam-3.1", "proves"],
   ];
+  if (models.includes("muse-wonder-1.0")) {
+    ledgerModels.push(["muse-wonder-1.0", "second opinions, trends"]);
+  }
   if (models.includes("muse-voice-transcribe-1.0")) {
     ledgerModels.push(["muse-voice-transcribe-1.0", "listens"]);
   }
@@ -1470,6 +2142,9 @@ function renderReport(result) {
     isNum(stats.sam_requests) ? stats.sam_requests + " SAM requests" : null,
     isNum(stats.sam_frames) ? stats.sam_frames + " SAM frames" : null,
     isNum(stats.rechecks) ? stats.rechecks + " re-checks" : null,
+    isNum(stats.privacy_checks) ? stats.privacy_checks + " privacy checks" : null,
+    isNum(stats.coverage_calls) ? stats.coverage_calls + " coverage calls" : null,
+    isNum(stats.floor_checks) ? stats.floor_checks + " floor checks" : null,
     "cost " + fmtCost(result.cost_usd),
     "took " + fmtSeconds(result.latency_s),
     result.run_id ? "run " + result.run_id : null,
@@ -1494,16 +2169,27 @@ function buildCopyText(result) {
   if (!result) return "";
   const lines = [];
   lines.push("Second Look room check" + (result.run_id ? " (" + fmtRunDate(result.run_id) + ")" : ""));
+  if (result.room) lines.push("Room: " + result.room + (result.filmed_by ? " · filmed by " + result.filmed_by : ""));
+  if (result.coverage && result.coverage.score != null) {
+    const pct = coveragePct(result.coverage.score);
+    lines.push(result.coverage.ok === false
+      ? "Coverage: these two walkthroughs don't cover the same corners — " + (result.coverage.retake_tip || "re-film the missing corner.")
+      : "Coverage: both walkthroughs covered the same room" + (pct != null ? " (" + pct + "%)." : "."));
+  }
+  if (result.privacy) {
+    lines.push("Privacy: " + (result.privacy.people_blurred || 0) + " people and " +
+      (result.privacy.documents_blurred || 0) + " papers blurred before anything was stored or reasoned over.");
+  }
   if (result.summary) lines.push("", result.summary);
-  const kept = sortedByRisk(result.kept_claims || result.claims || []);
+  const kept = sortedByRisk((result.kept_claims || result.claims || []).concat(floorExtraClaims(result, result.kept_claims || result.claims || [])));
   if (kept.length) {
     lines.push("", "What changed:");
     kept.forEach((c) => {
       const alias = aliasFor(result, c.concept);
-      lines.push("- " + sentenceCase(c.concept || "") + " — " + String(c.change || "").toLowerCase() +
+      lines.push("- " + sentenceCase(c.concept || "") + " — " + changeLabel(c.change || "") +
         " (" + riskOf(c) + " risk)" +
         (alias ? " [tracked as “" + alias + "”]" : "") +
-        (c.explanation ? ": " + cleanExplanation(c.explanation) : "") +
+        (c.explanation || c.where ? ": " + cleanExplanation(c.explanation || c.where) : "") +
         (c.safety_note ? " " + c.safety_note : "") +
         (c.risk_reason ? " Why this risk: " + c.risk_reason : ""));
     });
@@ -1512,7 +2198,7 @@ function buildCopyText(result) {
   if (dropped.length) {
     lines.push("", "Struck from the report (not supported by evidence):");
     dropped.forEach((c) => {
-      lines.push("- " + sentenceCase(c.concept || "") + " — " + String(c.change || "").toLowerCase() +
+      lines.push("- " + sentenceCase(c.concept || "") + " — " + changeLabel(c.change || "") +
         (c.reason ? ": " + c.reason : ""));
     });
   } else {
@@ -1542,12 +2228,16 @@ async function copySummary() {
   window.setTimeout(() => { els.copyBtnText.textContent = "Copy summary"; }, 2000);
 }
 
-/* Plain-text share body, kept under ~1800 chars so mail clients do not choke. */
 function buildShareText(result) {
   if (!result) return "";
   const disclaimer = "Not a medical device.";
   const lines = [];
   lines.push("Second Look — room check " + fmtShareDate(result));
+  if (result.room) lines.push("Room: " + result.room);
+  if (result.coverage && result.coverage.ok === false) {
+    lines.push("Coverage note: these two walkthroughs don't cover the same corners — " +
+      (result.coverage.retake_tip || "re-film the missing corner."));
+  }
   if (result.summary) lines.push("", String(result.summary).trim());
 
   const attention = (Array.isArray(state.attentionItems) ? state.attentionItems : collectAttentionItems(result))
@@ -1568,7 +2258,7 @@ function buildShareText(result) {
   if (dropped.length) {
     lines.push("", "Struck from the report (not supported by evidence):");
     dropped.forEach((c) => {
-      lines.push("- " + sentenceCase(c.concept || "") + " — " + String(c.change || "").toLowerCase() +
+      lines.push("- " + sentenceCase(c.concept || "") + " — " + changeLabel(c.change || "") +
         (c.reason ? ": " + c.reason : ""));
     });
   }
@@ -1592,9 +2282,7 @@ async function shareSummary() {
       await navigator.share({ title, text });
       return;
     } catch (err) {
-      /* The family member closed the share sheet — do not fall through to email. */
       if (err && err.name === "AbortError") return;
-      /* Any other share failure falls back to email below. */
     }
   }
   const mailto = "mailto:?subject=" + encodeURIComponent(title) +
@@ -1612,19 +2300,83 @@ function renderHistory(items) {
   els.historyList.innerHTML = "";
   items.forEach((item) => {
     item = item || {};
+    const rowWrap = document.createElement("div");
+    rowWrap.className = "history-row";
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "history-item";
     const kept = isNum(item.kept) ? item.kept : 0;
     const dropped = isNum(item.dropped) ? item.dropped : 0;
+    const room = item.room ? String(item.room) : "";
     btn.innerHTML =
       '<span class="history-item-summary">' + escapeHtml(item.summary || "Room check") + "</span>" +
-      '<span class="history-item-meta">' + escapeHtml(fmtRunDate(item.run_id)) + " · " +
+      '<span class="history-item-meta">' +
+      (room ? '<span class="history-room">' + escapeHtml(room) + "</span> · " : "") +
+      escapeHtml(fmtRunDate(item.run_id)) + " · " +
       kept + " kept · " + dropped + ' struck · <span class="mono">' + fmtCost(item.cost_usd) +
       " · " + fmtSeconds(item.latency_s) + "</span></span>";
     btn.addEventListener("click", () => loadHistoryItem(item.run_id));
-    els.historyList.appendChild(btn);
+    rowWrap.appendChild(btn);
+
+    if (item.run_id) {
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "btn btn-quiet history-delete";
+      del.innerHTML = ICON_TRASH + "<span>Delete</span>";
+      del.setAttribute("aria-label", "Delete the check from " + fmtRunDate(item.run_id) + (room ? " for " + room : ""));
+      let armed = false;
+      let armTimer = null;
+      del.addEventListener("click", async () => {
+        if (!armed) {
+          armed = true;
+          del.querySelector("span").textContent = "Confirm";
+          del.classList.add("is-armed");
+          armTimer = window.setTimeout(() => {
+            armed = false;
+            del.querySelector("span").textContent = "Delete";
+            del.classList.remove("is-armed");
+          }, 5000);
+          del.focus();
+          return;
+        }
+        if (armTimer) window.clearTimeout(armTimer);
+        del.disabled = true;
+        del.querySelector("span").textContent = "Deleting…";
+        try {
+          const resp = await fetch("/api/history/" + encodeURIComponent(item.run_id), { method: "DELETE" });
+          if (!resp.ok) throw new Error("That check could not be deleted (" + resp.status + ").");
+          if (state.currentResult && state.currentResult.run_id === item.run_id) clearReport();
+          rowWrap.remove();
+          if (!els.historyList.querySelector(".history-row")) {
+            els.historyList.innerHTML = '<p class="history-empty">No checks yet — try the sample room.</p>';
+          }
+        } catch (err) {
+          del.disabled = false;
+          del.querySelector("span").textContent = "Delete";
+          del.classList.remove("is-armed");
+          armed = false;
+          const note = document.createElement("p");
+          note.className = "history-status history-status-error";
+          note.textContent = err && err.message ? err.message : "That check could not be deleted.";
+          rowWrap.appendChild(note);
+        }
+      });
+      rowWrap.appendChild(del);
+    }
+    els.historyList.appendChild(rowWrap);
   });
+}
+
+async function refreshHistory() {
+  els.historyList.innerHTML = '<p class="history-status">Loading past checks…</p>';
+  try {
+    const resp = await fetch("/api/history");
+    if (!resp.ok) throw new Error("Past checks could not be loaded (" + resp.status + ").");
+    renderHistory(await resp.json());
+  } catch (err) {
+    els.historyList.innerHTML = '<p class="history-status history-status-error">' +
+      escapeHtml(err && err.message ? err.message : "Past checks could not be loaded.") + "</p>";
+  }
 }
 
 async function loadHistoryItem(runId) {
@@ -1635,6 +2387,11 @@ async function loadHistoryItem(runId) {
     if (!resp.ok) throw new Error("That check could not be loaded (" + resp.status + ").");
     const result = await resp.json();
     renderReport(result || {});
+    if (result && result.room && els.roomInput) {
+      els.roomInput.value = result.room;
+      updateBaselineUi(false);
+      updateReminderLink(result.room);
+    }
     els.historyDrawer.hidden = true;
     els.historyBtn.setAttribute("aria-expanded", "false");
     els.reportSection.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" });
@@ -1649,15 +2406,7 @@ async function toggleHistory() {
   els.historyDrawer.hidden = !opening;
   els.historyBtn.setAttribute("aria-expanded", String(opening));
   if (!opening) return;
-  els.historyList.innerHTML = '<p class="history-status">Loading past checks…</p>';
-  try {
-    const resp = await fetch("/api/history");
-    if (!resp.ok) throw new Error("Past checks could not be loaded (" + resp.status + ").");
-    renderHistory(await resp.json());
-  } catch (err) {
-    els.historyList.innerHTML = '<p class="history-status history-status-error">' +
-      escapeHtml(err && err.message ? err.message : "Past checks could not be loaded.") + "</p>";
-  }
+  await refreshHistory();
 }
 
 /* ---------------- Wiring ---------------- */
@@ -1667,17 +2416,34 @@ function init() {
   initTags();
   initDropzone("before");
   initDropzone("after");
+  initRecording();
   renderTags(null);
   updateRunButton();
+  updateReminderLink(roomValue());
+  loadRooms(false);
   els.voiceStopBtn.hidden = true;
   els.voiceTimer.hidden = true;
   els.voiceBtn.hidden = false;
+
+  if (els.roomInput) {
+    els.roomInput.addEventListener("input", () => {
+      updateBaselineUi(false);
+      updateReminderLink(roomValue());
+    });
+    els.roomInput.addEventListener("change", () => {
+      updateBaselineUi(false);
+      updateReminderLink(roomValue());
+    });
+  }
+  if (els.baselineCheck) {
+    els.baselineCheck.addEventListener("change", applyBaselineVisibility);
+  }
 
   els.sampleBtn.addEventListener("click", loadSample);
   els.runBtn.addEventListener("click", startRun);
   els.retryBtn.addEventListener("click", () => {
     els.liveError.hidden = true;
-    if (state.sampleMode || (state.beforeFile && state.afterFile)) startRun();
+    if (state.sampleMode || baselineActive() || (state.beforeFile && state.afterFile)) startRun();
     else {
       document.getElementById("intake").scrollIntoView({
         behavior: reducedMotion() ? "auto" : "smooth", block: "start",
@@ -1699,16 +2465,16 @@ function init() {
   els.printBtn.addEventListener("click", () => window.print());
   els.copyBtn.addEventListener("click", copySummary);
   if (els.shareBtn) els.shareBtn.addEventListener("click", shareSummary);
+  if (els.deleteCheckBtn) els.deleteCheckBtn.addEventListener("click", deleteCurrentCheck);
   document.addEventListener("keydown", (ev) => {
     if (ev.key === "Escape" && !els.historyDrawer.hidden) {
       els.historyDrawer.hidden = true;
       els.historyBtn.setAttribute("aria-expanded", "false");
+      els.historyBtn.focus();
     }
+    if (ev.key === "Escape" && state.cam) stopCamRecording();
   });
 
-  /* Deep link ?sample=1: run the same action as "Use the sample room"
-     (previews + watchlist), then scroll to the actions. Never auto-start
-     the check itself — the user still presses "Check the room". */
   try {
     const params = new URLSearchParams(window.location.search);
     if (params.get("sample") === "1") {
@@ -1718,6 +2484,10 @@ function init() {
           target.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" });
         }
       });
+    }
+    const runParam = params.get("run");
+    if (runParam) {
+      loadHistoryItem(runParam);
     }
   } catch (e) { /* malformed query string: load the page normally */ }
 }

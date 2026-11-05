@@ -5,6 +5,19 @@ PRESENCE_MIN_FRAMES = 2
 CONF_THRESHOLD = 0.5
 MOVED_MIN_CONF = 0.8
 
+# Large-furniture anchor words (coverage / anchor-overlap, CONTRACT_V3).
+ANCHOR_WORDS = ("bed", "sofa", "couch", "armchair", "chair", "table", "dresser",
+                "wardrobe", "cabinet", "desk", "bookshelf", "nightstand")
+LARGE_FURNITURE_WORDS = ANCHOR_WORDS
+
+def is_anchor(concept: str) -> bool:
+    """True if the concept name contains a large-furniture word."""
+    n = " ".join(str(concept or "").lower().strip().split())
+    return any(w in n for w in ANCHOR_WORDS)
+
+# Backwards/forwards-compatible alias.
+is_large_furniture = is_anchor
+
 def summarize_track(parsed: dict) -> dict:
     """Summarise one concept in one video.
 
@@ -208,8 +221,30 @@ def _sam_only_risk(concept: str, change: str, watchlist_norm: list[str]) -> tupl
     return "medium", (f"SAM detected '{concept}' as {change} but Spark did not assess it; "
                       "defaulting to medium risk pending a caregiver check.")
 
+def _coverage_drop_reason(change: str, coverage: dict | None) -> str:
+    """Exact CONTRACT_V3 drop reason for uncovered anchor added/removed."""
+    area = ""
+    if isinstance(coverage, dict):
+        # Prefer the side whose absence makes this change untrustworthy.
+        ordered = []
+        if change == "removed":
+            ordered = list(coverage.get("missing_in_after") or []) + list(coverage.get("missing_in_before") or [])
+        elif change == "added":
+            ordered = list(coverage.get("missing_in_before") or []) + list(coverage.get("missing_in_after") or [])
+        else:
+            ordered = list(coverage.get("missing_in_after") or []) + list(coverage.get("missing_in_before") or [])
+        for a in ordered:
+            if str(a).strip():
+                area = str(a).strip(); break
+        if not area and coverage.get("retake_tip"):
+            # retake_tip is a sentence, not an area; only use it if short.
+            tip = str(coverage.get("retake_tip")).strip()
+            if tip and len(tip) <= 60:
+                area = tip
+    return f"Not covered by both walkthroughs — re-film {area or 'that corner'} before trusting this."
+
 def grounding_filter(raw_claims: list, summaries: dict, moved_verdicts: dict | None = None,
-                     watchlist=None) -> tuple[list, list]:
+                     watchlist=None, coverage: dict | None = None) -> tuple[list, list]:
     """Keep only claims SAM supports; add SAM-only added/removed claims.
 
     'moved' requires present_both AND a moved verdict with
@@ -219,9 +254,16 @@ def grounding_filter(raw_claims: list, summaries: dict, moved_verdicts: dict | N
     carried through onto BOTH kept and dropped claims. SAM-only kept
     claims get risk from a simple rule: watchlist item -> high,
     otherwise medium.
+
+    Coverage addition (CONTRACT_V3): if ``coverage`` is given and
+    ``coverage["ok"]`` is false, an ``added``/``removed`` claim whose
+    concept is a large-furniture anchor is DROPPED with reason
+    "Not covered by both walkthroughs — re-film {area} before trusting
+    this." This applies to Spark claims and to SAM-only claims alike.
     """
     moved_verdicts = moved_verdicts or {}
     watchlist_norm = _clean_watchlist(watchlist)
+    coverage_bad = isinstance(coverage, dict) and coverage.get("ok") is False
     kept, dropped, kept_concepts = [], [], set()
     for claim in raw_claims or []:
         if not isinstance(claim, dict):
@@ -264,6 +306,9 @@ def grounding_filter(raw_claims: list, summaries: dict, moved_verdicts: dict | N
                 ok = True
         else:
             reason = f"unsupported change type '{change}'"
+        if ok and coverage_bad and change in ("added", "removed") and is_anchor(key):
+            ok = False
+            reason = _coverage_drop_reason(change, coverage)
         if ok:
             kept.append({"concept": key, "change": change, "explanation": claim.get("explanation", ""),
                          "safety_note": claim.get("safety_note"), "source": "spark",
@@ -276,6 +321,15 @@ def grounding_filter(raw_claims: list, summaries: dict, moved_verdicts: dict | N
     # SAM-only added/removed that Spark missed
     for concept, s in summaries.items():
         if s["label"] in ("added", "removed") and concept not in kept_concepts:
+            if coverage_bad and is_anchor(concept):
+                risk, risk_reason = _sam_only_risk(concept, s["label"], watchlist_norm)
+                dropped.append({"concept": concept, "change": s["label"],
+                                "explanation": f"SAM 3.1 detected '{concept}' as {s['label']}.",
+                                "safety_note": None, "source": "sam",
+                                "risk": risk, "risk_reason": risk_reason,
+                                "evidence": _evidence(concept, s),
+                                "reason": _coverage_drop_reason(s["label"], coverage)})
+                continue
             risk, risk_reason = _sam_only_risk(concept, s["label"], watchlist_norm)
             kept.append({"concept": concept, "change": s["label"],
                          "explanation": f"SAM 3.1 detected '{concept}' as {s['label']} (present in "

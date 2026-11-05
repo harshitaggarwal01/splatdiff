@@ -1,0 +1,3 @@
+done in 69s, 46557 chars, usage={'input_tokens': 9278, 'input_tokens_details': {'cached_tokens': 0}, 'output_tokens': 14558, 'output_tokens_details': {'reasoning_tokens': 3453}, 'total_tokens': 23836}
+wrote:
+  server.py
