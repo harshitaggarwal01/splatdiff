@@ -119,6 +119,18 @@ The grounding filter: `added` kept only if SAM's label is `added`; `removed` onl
 
 On our one scoreable test room (3+ runs), the raw model invented 25–40% of claims; grounding struck every one — **a smoke test, not a benchmark**. Real cluttered rooms are untested, and recall there — the number that matters most, since a missed "walker moved" is the catastrophic error — is unknown. A fresh sample check takes **~1–1.5 min and ~$0.24–0.33**; cached replays are free and instant.
 
+
+### Real footage (one pair, Nov 4 2026)
+
+A computer lab filmed twice on an iPhone (HDR HEVC, ~18 s each). Between the walkthroughs, chairs were pulled out from under the desks into the aisle and writing was added to a whiteboard.
+
+- **Kept:** *chair — moved* (high risk; moved-judge 0.92: "was tucked centered under desk facing monitor, now pulled out to left side").
+- **Struck:** *trash bin — added* — "The two walkthroughs only partly overlap (60%), so the trash bin may simply have been out of view in the first video. Re-film that corner to confirm." The first video never showed that floor spot; this rule was added after this run exposed the gap.
+- **Not reported:** the whiteboard writing — Second Look checks objects, not what is written on them; the board itself was *seen where it was*.
+- Muse Wonder's second opinion fired on a borderline keyboard call (ruled not moved). No people in frame. First full run: 82 s, $0.44.
+
+One real pair is a smoke test, not a benchmark. The raw videos are not published; the report's frames are, in the live demo under Past checks.
+
 ## Setup
 
 ```bash

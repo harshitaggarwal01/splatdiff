@@ -1,0 +1,844 @@
+{
+  "run_id": "20261104_203056",
+  "before": "D:\\Brown University\\metahack\\splatdiff\\cache\\uploads\\4c00fef9f9d6\\before.mov",
+  "after": "D:\\Brown University\\metahack\\splatdiff\\cache\\uploads\\4c00fef9f9d6\\after.mov",
+  "room": "Computer lab",
+  "filmed_by": "Harshit",
+  "normalized_before": "cache\\normalized\\6d153bd284a8259ba07c178322b763267c2a2ad08b28401f4c69c3fad32c9937.mp4",
+  "normalized_after": "cache\\normalized\\018b3253fe8dd8a107b0cf360a826f704a2144e5f2d2b8bcfd647e60c90d034b.mp4",
+  "objects": [
+    {
+      "concept": "whiteboard",
+      "where_before": "",
+      "where_after": "",
+      "suspected_change": "unchanged"
+    },
+    {
+      "concept": "chair",
+      "where_before": "tucked under middle desk center",
+      "where_after": "pulled out in front of middle desk left",
+      "suspected_change": "moved"
+    },
+    {
+      "concept": "chair",
+      "where_before": "tucked under middle desk right",
+      "where_after": "pulled out in front of middle desk right",
+      "suspected_change": "moved"
+    },
+    {
+      "concept": "keyboard",
+      "where_before": "on middle desk under monitor",
+      "where_after": "on middle desk front edge",
+      "suspected_change": "moved"
+    },
+    {
+      "concept": "mouse",
+      "where_before": "on middle desk right side",
+      "where_after": "on middle desk right side",
+      "suspected_change": "unchanged"
+    },
+    {
+      "concept": "monitor",
+      "where_before": "on middle desk center",
+      "where_after": "on middle desk center",
+      "suspected_change": "unchanged"
+    },
+    {
+      "concept": "computer tower",
+      "where_before": "under middle desk right",
+      "where_after": "under middle desk right",
+      "suspected_change": "unchanged"
+    },
+    {
+      "concept": "trash bin",
+      "where_before": "not visible",
+      "where_after": "under whiteboard on wall",
+      "suspected_change": "added"
+    }
+  ],
+  "concepts": [
+    "chair",
+    "whiteboard",
+    "keyboard",
+    "mouse",
+    "monitor",
+    "computer tower",
+    "trash bin"
+  ],
+  "summaries": {
+    "chair": {
+      "concept": "chair",
+      "before": {
+        "frames_detected": 94,
+        "max_instances": 6,
+        "mean_conf": 0.8662217837527282,
+        "best_frame": 23,
+        "best_box": [
+          357,
+          627,
+          611,
+          990
+        ],
+        "best_conf": 0.9569892287254333,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 71,
+        "max_instances": 7,
+        "mean_conf": 0.8899259136782752,
+        "best_frame": 10,
+        "best_box": [
+          10,
+          558,
+          253,
+          940
+        ],
+        "best_conf": 0.9804878830909729,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": true
+    },
+    "computer tower": {
+      "concept": "computer tower",
+      "before": {
+        "frames_detected": 41,
+        "max_instances": 2,
+        "mean_conf": 0.8774334980891301,
+        "best_frame": 25,
+        "best_box": [
+          17,
+          764,
+          144,
+          1042
+        ],
+        "best_conf": 0.9179486632347107,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 58,
+        "max_instances": 2,
+        "mean_conf": 0.842815942896737,
+        "best_frame": 32,
+        "best_box": [
+          74,
+          622,
+          198,
+          864
+        ],
+        "best_conf": 0.9532163739204407,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": false
+    },
+    "keyboard": {
+      "concept": "keyboard",
+      "before": {
+        "frames_detected": 89,
+        "max_instances": 4,
+        "mean_conf": 0.8658125410819876,
+        "best_frame": 87,
+        "best_box": [
+          102,
+          929,
+          472,
+          1086
+        ],
+        "best_conf": 0.9532163739204407,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 69,
+        "max_instances": 3,
+        "mean_conf": 0.8729936662366835,
+        "best_frame": 67,
+        "best_box": [
+          166,
+          824,
+          483,
+          933
+        ],
+        "best_conf": 0.9452055096626282,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": true
+    },
+    "monitor": {
+      "concept": "monitor",
+      "before": {
+        "frames_detected": 92,
+        "max_instances": 4,
+        "mean_conf": 0.8270755782373634,
+        "best_frame": 87,
+        "best_box": [
+          73,
+          549,
+          474,
+          790
+        ],
+        "best_conf": 0.9101123809814453,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 70,
+        "max_instances": 3,
+        "mean_conf": 0.8536951808059741,
+        "best_frame": 67,
+        "best_box": [
+          143,
+          490,
+          492,
+          709
+        ],
+        "best_conf": 0.8476190567016602,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": true
+    },
+    "mouse": {
+      "concept": "mouse",
+      "before": {
+        "frames_detected": 84,
+        "max_instances": 3,
+        "mean_conf": 0.825189858675003,
+        "best_frame": 87,
+        "best_box": [
+          541,
+          962,
+          610,
+          1024
+        ],
+        "best_conf": 0.9259259104728699,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 63,
+        "max_instances": 3,
+        "mean_conf": 0.8589282130653207,
+        "best_frame": 67,
+        "best_box": [
+          549,
+          850,
+          602,
+          897
+        ],
+        "best_conf": 0.9064327478408813,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": false
+    },
+    "trash bin": {
+      "concept": "trash bin",
+      "before": {
+        "frames_detected": 0,
+        "max_instances": 0,
+        "mean_conf": 0.0,
+        "best_frame": null,
+        "best_box": null,
+        "best_conf": 0.0,
+        "present": false
+      },
+      "after": {
+        "frames_detected": 5,
+        "max_instances": 1,
+        "mean_conf": 0.949367105960846,
+        "best_frame": 80,
+        "best_box": [
+          0,
+          974,
+          284,
+          1137
+        ],
+        "best_conf": 0.949367105960846,
+        "present": true
+      },
+      "label": "added",
+      "original_label": "added",
+      "recheck": {
+        "checked": true,
+        "found": false,
+        "video": "before",
+        "keyframe_index": null,
+        "box": null,
+        "c": 0.0,
+        "keyframes_checked": 6
+      },
+      "count_changed": true
+    },
+    "whiteboard": {
+      "concept": "whiteboard",
+      "before": {
+        "frames_detected": 9,
+        "max_instances": 1,
+        "mean_conf": 0.7229437232017517,
+        "best_frame": 91,
+        "best_box": [
+          0,
+          84,
+          215,
+          560
+        ],
+        "best_conf": 0.7229437232017517,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 21,
+        "max_instances": 1,
+        "mean_conf": 0.7037037014961243,
+        "best_frame": 69,
+        "best_box": [
+          0,
+          79,
+          310,
+          570
+        ],
+        "best_conf": 0.7037037014961243,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": false
+    }
+  },
+  "diff_table": {
+    "chair": {
+      "concept": "chair",
+      "before": {
+        "frames_detected": 94,
+        "max_instances": 6,
+        "mean_conf": 0.8662217837527282,
+        "best_frame": 23,
+        "best_box": [
+          357,
+          627,
+          611,
+          990
+        ],
+        "best_conf": 0.9569892287254333,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 71,
+        "max_instances": 7,
+        "mean_conf": 0.8899259136782752,
+        "best_frame": 10,
+        "best_box": [
+          10,
+          558,
+          253,
+          940
+        ],
+        "best_conf": 0.9804878830909729,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": true
+    },
+    "computer tower": {
+      "concept": "computer tower",
+      "before": {
+        "frames_detected": 41,
+        "max_instances": 2,
+        "mean_conf": 0.8774334980891301,
+        "best_frame": 25,
+        "best_box": [
+          17,
+          764,
+          144,
+          1042
+        ],
+        "best_conf": 0.9179486632347107,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 58,
+        "max_instances": 2,
+        "mean_conf": 0.842815942896737,
+        "best_frame": 32,
+        "best_box": [
+          74,
+          622,
+          198,
+          864
+        ],
+        "best_conf": 0.9532163739204407,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": false
+    },
+    "keyboard": {
+      "concept": "keyboard",
+      "before": {
+        "frames_detected": 89,
+        "max_instances": 4,
+        "mean_conf": 0.8658125410819876,
+        "best_frame": 87,
+        "best_box": [
+          102,
+          929,
+          472,
+          1086
+        ],
+        "best_conf": 0.9532163739204407,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 69,
+        "max_instances": 3,
+        "mean_conf": 0.8729936662366835,
+        "best_frame": 67,
+        "best_box": [
+          166,
+          824,
+          483,
+          933
+        ],
+        "best_conf": 0.9452055096626282,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": true
+    },
+    "monitor": {
+      "concept": "monitor",
+      "before": {
+        "frames_detected": 92,
+        "max_instances": 4,
+        "mean_conf": 0.8270755782373634,
+        "best_frame": 87,
+        "best_box": [
+          73,
+          549,
+          474,
+          790
+        ],
+        "best_conf": 0.9101123809814453,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 70,
+        "max_instances": 3,
+        "mean_conf": 0.8536951808059741,
+        "best_frame": 67,
+        "best_box": [
+          143,
+          490,
+          492,
+          709
+        ],
+        "best_conf": 0.8476190567016602,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": true
+    },
+    "mouse": {
+      "concept": "mouse",
+      "before": {
+        "frames_detected": 84,
+        "max_instances": 3,
+        "mean_conf": 0.825189858675003,
+        "best_frame": 87,
+        "best_box": [
+          541,
+          962,
+          610,
+          1024
+        ],
+        "best_conf": 0.9259259104728699,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 63,
+        "max_instances": 3,
+        "mean_conf": 0.8589282130653207,
+        "best_frame": 67,
+        "best_box": [
+          549,
+          850,
+          602,
+          897
+        ],
+        "best_conf": 0.9064327478408813,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": false
+    },
+    "trash bin": {
+      "concept": "trash bin",
+      "before": {
+        "frames_detected": 0,
+        "max_instances": 0,
+        "mean_conf": 0.0,
+        "best_frame": null,
+        "best_box": null,
+        "best_conf": 0.0,
+        "present": false
+      },
+      "after": {
+        "frames_detected": 5,
+        "max_instances": 1,
+        "mean_conf": 0.949367105960846,
+        "best_frame": 80,
+        "best_box": [
+          0,
+          974,
+          284,
+          1137
+        ],
+        "best_conf": 0.949367105960846,
+        "present": true
+      },
+      "label": "added",
+      "original_label": "added",
+      "recheck": {
+        "checked": true,
+        "found": false,
+        "video": "before",
+        "keyframe_index": null,
+        "box": null,
+        "c": 0.0,
+        "keyframes_checked": 6
+      },
+      "count_changed": true
+    },
+    "whiteboard": {
+      "concept": "whiteboard",
+      "before": {
+        "frames_detected": 9,
+        "max_instances": 1,
+        "mean_conf": 0.7229437232017517,
+        "best_frame": 91,
+        "best_box": [
+          0,
+          84,
+          215,
+          560
+        ],
+        "best_conf": 0.7229437232017517,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 21,
+        "max_instances": 1,
+        "mean_conf": 0.7037037014961243,
+        "best_frame": 69,
+        "best_box": [
+          0,
+          79,
+          310,
+          570
+        ],
+        "best_conf": 0.7037037014961243,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": false
+    }
+  },
+  "moved_verdicts": {
+    "chair": {
+      "moved": true,
+      "confidence": 0.95,
+      "reason": "chair pulled out from tucked under desk to side and rotated"
+    },
+    "computer tower": {
+      "moved": false,
+      "confidence": 0.95,
+      "reason": "same spot under left desk bay beside divider leg"
+    },
+    "whiteboard": {
+      "moved": false,
+      "confidence": 0.95,
+      "reason": "same wall-mounted position relative to outlet and cabinets"
+    },
+    "monitor": {
+      "moved": false,
+      "confidence": 0.92,
+      "reason": "monitor on same stand centered under cabinets with unchanged keyboard and book layout"
+    },
+    "mouse": {
+      "moved": false,
+      "confidence": 0.85,
+      "reason": "mouse stays at same spot right of keyboard near desk edge in both views"
+    },
+    "keyboard": {
+      "moved": false,
+      "confidence": 0.9,
+      "reason": "Keyboard remains on desk centered in front of monitor, same position relative to monitor stand, mouse to its right, and red item behind it",
+      "first_opinion": {
+        "moved": true,
+        "confidence": 0.72,
+        "reason": "gap between keyboard and mouse widened and angle vs monitor base changed"
+      },
+      "escalated": true,
+      "model": "muse-wonder-1.0"
+    }
+  },
+  "summary": "Chair moved. 1 unproven claim struck.",
+  "raw_claims": [
+    {
+      "concept": "chair",
+      "change": "moved",
+      "explanation": "Chair present in both but relocated: before best_box [357,627,611,990] tucked under desk, after best_box [10,558,253,940] pulled out to side and rotated, moved verdict true at 0.95 confidence.",
+      "safety_note": "Watchlist chair left out and rotated - restore to tucked position to keep walkway clear.",
+      "risk": "high",
+      "risk_reason": "Watchlist chair displaced into room, potential walkway block and trip/fall risk"
+    },
+    {
+      "concept": "trash bin",
+      "change": "added",
+      "explanation": "Trash bin not found before (0 frames) newly detected after in 5 frames at best_box [0,974,284,1137] with 0.95 confidence.",
+      "safety_note": "New floor object noted on inspection - keep clear of walking path.",
+      "risk": "high",
+      "risk_reason": "New object on floor creating trip hazard for older adult"
+    }
+  ],
+  "claims": [
+    {
+      "concept": "chair",
+      "change": "moved",
+      "explanation": "Chair present in both but relocated: before best_box [357,627,611,990] tucked under desk, after best_box [10,558,253,940] pulled out to side and rotated, moved verdict true at 0.95 confidence.",
+      "safety_note": "Watchlist chair left out and rotated - restore to tucked position to keep walkway clear.",
+      "source": "spark",
+      "risk": "high",
+      "risk_reason": "Watchlist chair displaced into room, potential walkway block and trip/fall risk",
+      "evidence": {
+        "concept": "chair",
+        "label": "present_both",
+        "original_label": "present_both",
+        "recheck": null,
+        "frames_before": 94,
+        "frames_after": 71,
+        "best_box_before": [
+          357,
+          627,
+          611,
+          990
+        ],
+        "best_box_after": [
+          10,
+          558,
+          253,
+          940
+        ],
+        "best_frame_before": 23,
+        "best_frame_after": 10,
+        "confidence_before": 0.9569892287254333,
+        "confidence_after": 0.9804878830909729,
+        "mean_conf_before": 0.8662217837527282,
+        "mean_conf_after": 0.8899259136782752,
+        "max_instances_before": 6,
+        "max_instances_after": 7
+      },
+      "images": {
+        "before": "/splatdiff/outputs/20261104_203056/before_chair.jpg",
+        "after": "/splatdiff/outputs/20261104_203056/after_chair.jpg"
+      }
+    }
+  ],
+  "kept_claims": [
+    {
+      "concept": "chair",
+      "change": "moved",
+      "explanation": "Chair present in both but relocated: before best_box [357,627,611,990] tucked under desk, after best_box [10,558,253,940] pulled out to side and rotated, moved verdict true at 0.95 confidence.",
+      "safety_note": "Watchlist chair left out and rotated - restore to tucked position to keep walkway clear.",
+      "source": "spark",
+      "risk": "high",
+      "risk_reason": "Watchlist chair displaced into room, potential walkway block and trip/fall risk",
+      "evidence": {
+        "concept": "chair",
+        "label": "present_both",
+        "original_label": "present_both",
+        "recheck": null,
+        "frames_before": 94,
+        "frames_after": 71,
+        "best_box_before": [
+          357,
+          627,
+          611,
+          990
+        ],
+        "best_box_after": [
+          10,
+          558,
+          253,
+          940
+        ],
+        "best_frame_before": 23,
+        "best_frame_after": 10,
+        "confidence_before": 0.9569892287254333,
+        "confidence_after": 0.9804878830909729,
+        "mean_conf_before": 0.8662217837527282,
+        "mean_conf_after": 0.8899259136782752,
+        "max_instances_before": 6,
+        "max_instances_after": 7
+      },
+      "images": {
+        "before": "/splatdiff/outputs/20261104_203056/before_chair.jpg",
+        "after": "/splatdiff/outputs/20261104_203056/after_chair.jpg"
+      }
+    }
+  ],
+  "dropped": [
+    {
+      "concept": "trash bin",
+      "change": "added",
+      "explanation": "Trash bin not found before (0 frames) newly detected after in 5 frames at best_box [0,974,284,1137] with 0.95 confidence.",
+      "safety_note": "New floor object noted on inspection - keep clear of walking path.",
+      "risk": "high",
+      "risk_reason": "New object on floor creating trip hazard for older adult",
+      "reason": "The two walkthroughs only partly overlap (60%), so the trash bin may simply have been out of view in the first video. Re-film that corner to confirm.",
+      "images": {
+        "before": null,
+        "after": "/splatdiff/outputs/20261104_203056/after_trash_bin.jpg"
+      }
+    }
+  ],
+  "annotated_images": [
+    "outputs\\20261104_203056\\before_chair.jpg",
+    "outputs\\20261104_203056\\after_chair.jpg",
+    "outputs\\20261104_203056\\before_computer_tower.jpg",
+    "outputs\\20261104_203056\\after_computer_tower.jpg",
+    "outputs\\20261104_203056\\before_keyboard.jpg",
+    "outputs\\20261104_203056\\after_keyboard.jpg",
+    "outputs\\20261104_203056\\before_monitor.jpg",
+    "outputs\\20261104_203056\\after_monitor.jpg",
+    "outputs\\20261104_203056\\before_mouse.jpg",
+    "outputs\\20261104_203056\\after_mouse.jpg",
+    "outputs\\20261104_203056\\after_trash_bin.jpg",
+    "outputs\\20261104_203056\\before_whiteboard.jpg",
+    "outputs\\20261104_203056\\after_whiteboard.jpg"
+  ],
+  "aliases": {},
+  "privacy": {
+    "people_blurred": 0,
+    "documents_blurred": 0,
+    "frames_checked": 12,
+    "note": "People and paper documents were blurred before any frame was stored, shown or sent to the reasoning model."
+  },
+  "coverage": {
+    "score": 0.6,
+    "ok": true,
+    "anchor_overlap": 1.0,
+    "spark_score": 0.6,
+    "shared_anchors": [
+      "chair"
+    ],
+    "only_before": [],
+    "only_after": [],
+    "missing_in_after": [
+      "interior glass window partition wall"
+    ],
+    "missing_in_before": [
+      "right-side pillar corner workstation"
+    ],
+    "retake_tip": "Re-film the AFTER walkthrough to include the glass window partition wall and match the pillar corner workstation."
+  },
+  "floor_check": {
+    "items": [],
+    "dropped": []
+  },
+  "trend": {
+    "trend": "The chair has been found moved out of place in every check, suggesting it repeatedly ends up displaced in the walkway.",
+    "repeat_items": [
+      {
+        "concept": "chair",
+        "times": 3,
+        "of_checks": 3
+      }
+    ]
+  },
+  "intentional": [],
+  "watchlist": [
+    "chair",
+    "whiteboard"
+  ],
+  "watchlist_status": [
+    {
+      "concept": "chair",
+      "status": "moved",
+      "risk": "high",
+      "note": "chair has moved from where it was. Check it is within reach of the bed/chair and has not become a trip hazard.",
+      "images": {
+        "before": "/splatdiff/outputs/20261104_203056/before_chair.jpg",
+        "after": "/splatdiff/outputs/20261104_203056/after_chair.jpg"
+      }
+    },
+    {
+      "concept": "whiteboard",
+      "status": "in_place",
+      "risk": "low",
+      "note": "whiteboard appears to still be in place.",
+      "images": {
+        "before": "/splatdiff/outputs/20261104_203056/before_whiteboard.jpg",
+        "after": "/splatdiff/outputs/20261104_203056/after_whiteboard.jpg"
+      }
+    }
+  ],
+  "keyframes": {
+    "before": [
+      "/splatdiff/outputs/20261104_203056/keyframes_before/frame_00_0.jpg",
+      "/splatdiff/outputs/20261104_203056/keyframes_before/frame_01_18.jpg",
+      "/splatdiff/outputs/20261104_203056/keyframes_before/frame_02_37.jpg",
+      "/splatdiff/outputs/20261104_203056/keyframes_before/frame_03_55.jpg",
+      "/splatdiff/outputs/20261104_203056/keyframes_before/frame_04_74.jpg",
+      "/splatdiff/outputs/20261104_203056/keyframes_before/frame_05_93.jpg"
+    ],
+    "after": [
+      "/splatdiff/outputs/20261104_203056/keyframes_after/frame_00_0.jpg",
+      "/splatdiff/outputs/20261104_203056/keyframes_after/frame_01_16.jpg",
+      "/splatdiff/outputs/20261104_203056/keyframes_after/frame_02_32.jpg",
+      "/splatdiff/outputs/20261104_203056/keyframes_after/frame_03_48.jpg",
+      "/splatdiff/outputs/20261104_203056/keyframes_after/frame_04_64.jpg",
+      "/splatdiff/outputs/20261104_203056/keyframes_after/frame_05_80.jpg"
+    ]
+  },
+  "stats": {
+    "concepts": 7,
+    "sam_requests": 14,
+    "sam_frames": 766,
+    "spark_calls": 10,
+    "rechecks": 1,
+    "repairs": 0,
+    "privacy_checks": 50,
+    "coverage_calls": 1,
+    "floor_checks": 0
+  },
+  "models": [
+    "muse-spark-1.3",
+    "sam-3.1",
+    "muse-wonder-1.0"
+  ],
+  "latency_s": 23.059,
+  "cost_usd": 0.006522
+}

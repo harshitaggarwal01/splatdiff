@@ -1,5 +1,16 @@
 [
   {
+    "run_id": "20261104_203056",
+    "summary": "Chair moved. 1 unproven claim struck.",
+    "kept": 1,
+    "dropped": 1,
+    "cost_usd": 0.006522,
+    "latency_s": 23.059,
+    "thumb": "/splatdiff/outputs/20261104_203056/after_chair.jpg",
+    "room": "Computer lab",
+    "date": "2026-11-04T20:30:56-05:00"
+  },
+  {
     "run_id": "20261104_195619",
     "summary": "Backpack removed from living area, suitcase added by sofa/window, and watchlist floor lamp relocated to opposite side of seating.",
     "kept": 3,

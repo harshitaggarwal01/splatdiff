@@ -19,5 +19,17 @@
     },
     "days_since": 0,
     "due": false
+  },
+  {
+    "room": "Computer lab",
+    "slug": "computer-lab",
+    "baseline": null,
+    "last_check": {
+      "date": "2026-11-04T20:30:56-05:00",
+      "status": "needs_attention",
+      "run_id": "20261104_203056"
+    },
+    "days_since": 0,
+    "due": false
   }
 ]

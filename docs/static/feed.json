@@ -1,5 +1,23 @@
 [
   {
+    "id": "20261104_203056",
+    "ts": "2026-11-04T20:30:56-05:00",
+    "room": "Computer lab",
+    "filmed_by": "Harshit",
+    "status": "needs_attention",
+    "headline": "Computer lab \u2014 needs attention: chair moved",
+    "items": [
+      {
+        "concept": "chair",
+        "change": "moved",
+        "risk": "high",
+        "next_step": "Ask Dad if he moved it on purpose; if not, someone there puts it back with him."
+      }
+    ],
+    "run_id": "20261104_203056",
+    "trend": "The chair has been found moved out of place in every check, suggesting it repeatedly ends up displaced in the walkway."
+  },
+  {
     "id": "20261104_195619",
     "ts": "2026-11-04T19:56:19-05:00",
     "room": "Bedroom",
