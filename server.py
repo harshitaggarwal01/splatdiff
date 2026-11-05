@@ -201,7 +201,8 @@ def _feed_status(result: dict) -> str:
     if isinstance(coverage, dict) and coverage.get("ok") is False:
         return "coverage_gap"
     for claim in _kept_claims(result):
-        if str(claim.get("risk") or "").strip().lower() == "high":
+        # Unknown risk (older results) means "needs a look", never "all clear".
+        if str(claim.get("risk") or "high").strip().lower() == "high":
             return "needs_attention"
     for entry in _watchlist_entries(result):
         status = str(entry.get("status") or entry.get("state") or "").strip().lower()
