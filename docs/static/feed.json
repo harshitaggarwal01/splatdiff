@@ -1,5 +1,65 @@
 [
   {
+    "id": "20261104_204531",
+    "ts": "2026-11-04T20:45:31-05:00",
+    "room": "Bedroom",
+    "filmed_by": null,
+    "status": "needs_attention",
+    "headline": "Bedroom \u2014 needs attention: backpack removed",
+    "items": [
+      {
+        "concept": "backpack",
+        "change": "removed",
+        "risk": "high",
+        "next_step": "Ask Dad where it is; put it back where he expects it."
+      },
+      {
+        "concept": "suitcase",
+        "change": "added",
+        "risk": "high",
+        "next_step": "Move it out of the walking path, with Dad."
+      },
+      {
+        "concept": "floor lamp",
+        "change": "moved",
+        "risk": "high",
+        "next_step": "Ask Dad if he moved it on purpose; if not, someone there puts it back with him."
+      }
+    ],
+    "run_id": "20261104_204531",
+    "trend": "Across all five Bedroom checks, the same three items keep being flagged: the backpack is missing, a suitcase has been added, and the floor lamp has been moved."
+  },
+  {
+    "id": "20261104_203938",
+    "ts": "2026-11-04T20:39:38-05:00",
+    "room": "Bedroom",
+    "filmed_by": null,
+    "status": "needs_attention",
+    "headline": "Bedroom \u2014 needs attention: backpack removed",
+    "items": [
+      {
+        "concept": "backpack",
+        "change": "removed",
+        "risk": "high",
+        "next_step": "Ask Dad where it is; put it back where he expects it."
+      },
+      {
+        "concept": "floor lamp",
+        "change": "moved",
+        "risk": "high",
+        "next_step": "Ask Dad if he moved it on purpose; if not, someone there puts it back with him."
+      },
+      {
+        "concept": "suitcase",
+        "change": "added",
+        "risk": "high",
+        "next_step": "Move it out of the walking path, with Dad."
+      }
+    ],
+    "run_id": "20261104_203938",
+    "trend": "Across all four Bedroom checks, the same three items keep being flagged: the backpack is missing, a suitcase has been added, and the floor lamp has been moved."
+  },
+  {
     "id": "20261104_203056",
     "ts": "2026-11-04T20:30:56-05:00",
     "room": "Computer lab",

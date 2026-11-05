@@ -1,6 +1,66 @@
 {
   "feed": [
     {
+      "id": "20261104_204531",
+      "ts": "2026-11-04T20:45:31-05:00",
+      "room": "Bedroom",
+      "filmed_by": null,
+      "status": "needs_attention",
+      "headline": "Bedroom \u2014 needs attention: backpack removed",
+      "items": [
+        {
+          "concept": "backpack",
+          "change": "removed",
+          "risk": "high",
+          "next_step": "Ask Dad where it is; put it back where he expects it."
+        },
+        {
+          "concept": "suitcase",
+          "change": "added",
+          "risk": "high",
+          "next_step": "Move it out of the walking path, with Dad."
+        },
+        {
+          "concept": "floor lamp",
+          "change": "moved",
+          "risk": "high",
+          "next_step": "Ask Dad if he moved it on purpose; if not, someone there puts it back with him."
+        }
+      ],
+      "run_id": "20261104_204531",
+      "trend": "Across all five Bedroom checks, the same three items keep being flagged: the backpack is missing, a suitcase has been added, and the floor lamp has been moved."
+    },
+    {
+      "id": "20261104_203938",
+      "ts": "2026-11-04T20:39:38-05:00",
+      "room": "Bedroom",
+      "filmed_by": null,
+      "status": "needs_attention",
+      "headline": "Bedroom \u2014 needs attention: backpack removed",
+      "items": [
+        {
+          "concept": "backpack",
+          "change": "removed",
+          "risk": "high",
+          "next_step": "Ask Dad where it is; put it back where he expects it."
+        },
+        {
+          "concept": "floor lamp",
+          "change": "moved",
+          "risk": "high",
+          "next_step": "Ask Dad if he moved it on purpose; if not, someone there puts it back with him."
+        },
+        {
+          "concept": "suitcase",
+          "change": "added",
+          "risk": "high",
+          "next_step": "Move it out of the walking path, with Dad."
+        }
+      ],
+      "run_id": "20261104_203938",
+      "trend": "Across all four Bedroom checks, the same three items keep being flagged: the backpack is missing, a suitcase has been added, and the floor lamp has been moved."
+    },
+    {
       "id": "20261104_203056",
       "ts": "2026-11-04T20:30:56-05:00",
       "room": "Computer lab",
@@ -123,6 +183,152 @@
   ],
   "recent_checks": [
     {
+      "run_id": "20261104_204531",
+      "room": "Bedroom",
+      "filmed_by": null,
+      "date": "20261104_204531",
+      "ts": "20261104_204531",
+      "citation": "[Bedroom, Nov 4 8:45 PM]",
+      "summary": "Backpack removed, suitcase added near sofa corner, and watchlist floor lamp moved to opposite side of seating area.",
+      "coverage": {
+        "ok": true,
+        "score": 0.9,
+        "retake_tip": "Pan left in the before walkthrough to include the tripod floor lamp corner."
+      },
+      "privacy": {
+        "people_blurred": 0,
+        "documents_blurred": 2,
+        "frames_checked": 12
+      },
+      "trend": "Across all five Bedroom checks, the same three items keep being flagged: the backpack is missing, a suitcase has been added, and the floor lamp has been moved.",
+      "kept_claims": [
+        {
+          "concept": "backpack",
+          "change": "removed",
+          "risk": "high",
+          "explanation": "Present before in 40 frames (conf 0.88, box [383,254,585,359]) and absent after in 0 frames."
+        },
+        {
+          "concept": "suitcase",
+          "change": "added",
+          "risk": "high",
+          "explanation": "Absent before in 0 frames, present after in 16 frames (conf 0.77, box [469,191,631,324]) occluding plant corner."
+        },
+        {
+          "concept": "floor lamp",
+          "change": "moved",
+          "risk": "high",
+          "explanation": "Present both with same box shift from [516,0,639,175] to [55,0,219,216]; verdict moved true (conf 0.90) from behind right end of sofa to behind armchair left of window."
+        }
+      ],
+      "dropped_claims": [],
+      "watchlist_status": [
+        {
+          "concept": "walker",
+          "status": "in_place",
+          "note": "walker appears to still be in place. (tracked as \"metal walking frame\")"
+        },
+        {
+          "concept": "floor lamp",
+          "status": "moved",
+          "note": "floor lamp has moved from where it was. Check it is within reach of the bed/chair and has not become a trip hazard."
+        },
+        {
+          "concept": "backpack",
+          "status": "missing",
+          "note": "backpack is no longer where it was. Check it is within reach of the bed/chair and find it before it is needed."
+        },
+        {
+          "concept": "walker",
+          "status": null,
+          "note": null
+        },
+        {
+          "concept": "floor lamp",
+          "status": null,
+          "note": null
+        },
+        {
+          "concept": "backpack",
+          "status": null,
+          "note": null
+        }
+      ]
+    },
+    {
+      "run_id": "20261104_203938",
+      "room": "Bedroom",
+      "filmed_by": null,
+      "date": "20261104_203938",
+      "ts": "20261104_203938",
+      "citation": "[Bedroom, Nov 4 8:39 PM]",
+      "summary": "Backpack removed from coffee table, floor lamp relocated to opposite side of seating area, and a large suitcase added near the sofa corner.",
+      "coverage": {
+        "ok": true,
+        "score": 0.9,
+        "retake_tip": "Pan left in the before walkthrough to include the tripod floor lamp corner."
+      },
+      "privacy": {
+        "people_blurred": 0,
+        "documents_blurred": 2,
+        "frames_checked": 12
+      },
+      "trend": "Across all four Bedroom checks, the same three items keep being flagged: the backpack is missing, a suitcase has been added, and the floor lamp has been moved.",
+      "kept_claims": [
+        {
+          "concept": "backpack",
+          "change": "removed",
+          "risk": "high",
+          "explanation": "Present before on coffee table in 40 frames (box [383,254,585,359]) and absent after in 0 frames."
+        },
+        {
+          "concept": "floor lamp",
+          "change": "moved",
+          "risk": "high",
+          "explanation": "Moved from behind right end of sofa right of window to behind armchair left of window and sofa per pairwise verdict."
+        },
+        {
+          "concept": "suitcase",
+          "change": "added",
+          "risk": "high",
+          "explanation": "Absent before in 0 frames, present after in 16 frames (box [469,191,631,324]) in corner by sofa, partially occluding potted plant."
+        }
+      ],
+      "dropped_claims": [],
+      "watchlist_status": [
+        {
+          "concept": "walker",
+          "status": "in_place",
+          "note": "walker appears to still be in place. (tracked as \"metal walking frame\")"
+        },
+        {
+          "concept": "floor lamp",
+          "status": "moved",
+          "note": "floor lamp has moved from where it was. Check it is within reach of the bed/chair and has not become a trip hazard."
+        },
+        {
+          "concept": "backpack",
+          "status": "missing",
+          "note": "backpack is no longer where it was. Check it is within reach of the bed/chair and find it before it is needed."
+        },
+        {
+          "concept": "walker",
+          "status": null,
+          "note": null
+        },
+        {
+          "concept": "floor lamp",
+          "status": null,
+          "note": null
+        },
+        {
+          "concept": "backpack",
+          "status": null,
+          "note": null
+        }
+      ]
+    },
+    {
       "run_id": "20261104_203056",
       "room": "Computer lab",
       "filmed_by": "Harshit",
@@ -174,153 +380,6 @@
         },
         {
           "concept": "whiteboard",
-          "status": null,
-          "note": null
-        }
-      ]
-    },
-    {
-      "run_id": "20261104_195619",
-      "room": "Bedroom",
-      "filmed_by": "Priya",
-      "date": "20261104_195619",
-      "ts": "20261104_195619",
-      "citation": "[Bedroom, Nov 4 7:56 PM]",
-      "summary": "Backpack removed from living area, suitcase added by sofa/window, and watchlist floor lamp relocated to opposite side of seating.",
-      "coverage": {
-        "ok": true,
-        "score": 0.9,
-        "retake_tip": "Pan left in the before walkthrough to include the tripod floor lamp corner."
-      },
-      "privacy": {
-        "people_blurred": 0,
-        "documents_blurred": 2,
-        "frames_checked": 12
-      },
-      "trend": "Across all three Bedroom checks, the same three items keep being flagged: the backpack is missing, a suitcase has been added, and the floor lamp has been moved.",
-      "kept_claims": [
-        {
-          "concept": "backpack",
-          "change": "removed",
-          "risk": "high",
-          "explanation": "SAM removed: present in 40 frames before (max 1, mean conf 0.88, best box [383,254,585,359]) vs 0 frames after. Watchlist item missing."
-        },
-        {
-          "concept": "suitcase",
-          "change": "added",
-          "risk": "high",
-          "explanation": "SAM added: 0 frames before vs 16 frames after (max 1, mean conf 0.77, best box [469,191,631,324]) by sofa/window area."
-        },
-        {
-          "concept": "floor lamp",
-          "change": "moved",
-          "risk": "high",
-          "explanation": "SAM present_both with moved=true (conf 0.9): from behind right end of sofa [516,0,639,175] to behind armchair left side [55,0,219,216]."
-        }
-      ],
-      "dropped_claims": [],
-      "watchlist_status": [
-        {
-          "concept": "walker",
-          "status": "in_place",
-          "note": "walker appears to still be in place. (tracked as \"metal walking frame\")"
-        },
-        {
-          "concept": "floor lamp",
-          "status": "moved",
-          "note": "floor lamp has moved from where it was. Check it is within reach of the bed/chair and has not become a trip hazard."
-        },
-        {
-          "concept": "backpack",
-          "status": "missing",
-          "note": "backpack is no longer where it was. Check it is within reach of the bed/chair and find it before it is needed."
-        },
-        {
-          "concept": "walker",
-          "status": null,
-          "note": null
-        },
-        {
-          "concept": "floor lamp",
-          "status": null,
-          "note": null
-        },
-        {
-          "concept": "backpack",
-          "status": null,
-          "note": null
-        }
-      ]
-    },
-    {
-      "run_id": "20261104_192044",
-      "room": "Bedroom",
-      "filmed_by": "Priya",
-      "date": "20261104_192044",
-      "ts": "20261104_192044",
-      "citation": "[Bedroom, Nov 4 7:20 PM]",
-      "summary": "Backpack removed, suitcase added, and watchlist floor lamp repositioned to opposite side of seating area. Walker and other furniture remain in place.",
-      "coverage": {
-        "ok": true,
-        "score": 0.9,
-        "retake_tip": "Pan left in the before walkthrough to include the tripod floor lamp corner."
-      },
-      "privacy": {
-        "people_blurred": 0,
-        "documents_blurred": 2,
-        "frames_checked": 12
-      },
-      "trend": null,
-      "kept_claims": [
-        {
-          "concept": "backpack",
-          "change": "removed",
-          "risk": "high",
-          "explanation": "Detected in 40 frames before at [383,254,585,359] and in 0 frames after; SAM label removed."
-        },
-        {
-          "concept": "suitcase",
-          "change": "added",
-          "risk": "high",
-          "explanation": "Absent in 0 frames before, detected in 16 frames after at [469,191,631,324]; SAM label added."
-        },
-        {
-          "concept": "floor lamp",
-          "change": "moved",
-          "risk": "low",
-          "explanation": "Present in both but moved from behind right end of sofa right of window [516,0,639,175] to behind armchair left of window/sofa [55,0,219,216].",
-          "intentional_quote": "I moved the lamp so I can read by my chair"
-        }
-      ],
-      "dropped_claims": [],
-      "watchlist_status": [
-        {
-          "concept": "walker",
-          "status": "in_place",
-          "note": "walker appears to still be in place. (tracked as \"metal walking frame\")"
-        },
-        {
-          "concept": "floor lamp",
-          "status": "moved",
-          "note": "floor lamp has moved from where it was - check it is within reach of the bed/chair and has not become a trip hazard."
-        },
-        {
-          "concept": "backpack",
-          "status": "missing",
-          "note": "backpack is no longer where it was - check it is within reach of the bed/chair and find it before it is needed."
-        },
-        {
-          "concept": "walker",
-          "status": null,
-          "note": null
-        },
-        {
-          "concept": "floor lamp",
-          "status": null,
-          "note": null
-        },
-        {
-          "concept": "backpack",
           "status": null,
           "note": null
         }
