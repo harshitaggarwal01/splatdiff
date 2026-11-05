@@ -8,10 +8,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/web/app.css">
   <style>
-    /* Slim top bar: the wordmark is the way back to the product page. */
-    .masthead-top .wordmark { color: inherit; text-decoration: none; }
-    .masthead-top .wordmark:hover { text-decoration: underline; text-underline-offset: 4px; }
-    .masthead-top .wordmark:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 2px; }
     /* "Needs attention" banner: calm brick-ink panel, moss line when all is well. */
     .attention-title { margin: 0 0 0.5rem; font-size: 1.05rem; }
     .attention-calm { margin: 0; }
@@ -61,27 +57,27 @@
   <script src="/web/app.js" defer></script>
 </head>
 <body>
+  <header class="site-nav">
+    <div class="site-nav__inner">
+      <a class="site-nav__brand" href="/">Second Look</a>
+      <nav class="site-nav__links" aria-label="Main">
+        <a class="site-nav__link" href="/app" aria-current="page">Room check</a>
+        <a class="site-nav__link" href="/family">Family feed</a>
+        <a class="site-nav__link" href="/glasses">In his glasses</a>
+      </nav>
+      <div class="site-nav__actions">
+        <button type="button" class="btn btn-quiet" id="historyBtn" aria-expanded="false" aria-controls="historyDrawer">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          Past checks
+        </button>
+        <a class="site-nav__cta" href="/app?sample=1">Try it now</a>
+      </div>
+    </div>
+  </header>
+
   <div class="sheet">
 
     <header class="masthead">
-      <div class="masthead-top">
-        <div class="wordmark-block">
-          <a class="wordmark" href="/" aria-label="Second Look — back to the product page">Second Look</a>
-          <span class="wordmark-sub">Room check</span>
-        </div>
-        <div class="masthead-right">
-          <time class="today mono" id="todayDate" datetime=""></time>
-          <a class="btn btn-quiet" href="/family">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            Family feed
-          </a>
-          <button type="button" class="btn btn-quiet" id="historyBtn" aria-expanded="false" aria-controls="historyDrawer">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-            Past checks
-          </button>
-        </div>
-      </div>
-
       <div class="history-drawer" id="historyDrawer" hidden>
         <div class="history-drawer-head">
           <h2 class="drawer-title">Past checks</h2>
@@ -93,7 +89,7 @@
       </div>
 
       <h1 class="promise">What changed in Dad&rsquo;s room since the last visit?</h1>
-      <p class="promise-sub">Film the room the day it is set up safe — after a hospital stay, a near-miss or a new walker. Next visit, anyone can film it again — a sibling, a neighbour, the aide — and you read the report wherever you are. Second Look shows what drifted, and every finding comes with its evidence or is struck from the report.</p>
+      <p class="promise-sub">Film the room the day it is set up safe — after a hospital stay, a near-miss or a new walker. Next visit, anyone can film it again — a sibling, a neighbour, the aide — and you read the report wherever you are. Second Look shows what changed, and every finding comes with its evidence or is struck from the report.</p>
     </header>
 
     <main>

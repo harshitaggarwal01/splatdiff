@@ -1,0 +1,3 @@
+done in 6s, 6814 chars, usage={'input_tokens': 5379, 'input_tokens_details': {'cached_tokens': 0}, 'output_tokens': 2058, 'output_tokens_details': {'reasoning_tokens': 279}, 'total_tokens': 7437}
+wrote:
+  web/glasses.html

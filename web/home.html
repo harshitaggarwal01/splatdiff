@@ -30,13 +30,17 @@
 </head>
 <body>
 
-<header class="site-bar">
-  <div class="site-bar-inner">
-    <a class="site-wordmark" href="/">Second Look</a>
-    <nav class="site-nav" aria-label="Main">
-      <a href="/app">Use your own videos</a>
-      <a class="btn btn-primary site-cta" href="/app?sample=1">Try it now</a>
+<header class="site-nav">
+  <div class="site-nav__inner">
+    <a class="site-nav__brand" href="/">Second Look</a>
+    <nav class="site-nav__links" aria-label="Main">
+      <a class="site-nav__link" href="/app">Room check</a>
+      <a class="site-nav__link" href="/family">Family feed</a>
+      <a class="site-nav__link" href="/glasses">In his glasses</a>
     </nav>
+    <div class="site-nav__actions">
+      <a class="site-nav__cta" href="/app?sample=1">Try it now</a>
+    </div>
   </div>
 </header>
 
@@ -45,7 +49,6 @@
   <!-- Hero -->
   <section class="hero" aria-labelledby="hero-heading">
     <div class="hero-text">
-      <p class="hero-wordmark" aria-hidden="true">Second Look</p>
       <h1 id="hero-heading" class="hero-heading">Know what changed in Dad&rsquo;s room &mdash; with proof.</h1>
       <p class="hero-sub">His walker pushed out of reach, a bag left in the path: small changes between visits that are easy to miss and can matter for a fall. Film a 20-second walkthrough each visit, and Second Look finds what changed, proves it, and tells you what to do.</p>
       <div class="hero-actions">
@@ -219,6 +222,27 @@
     </div>
   </section>
 
+  <!-- In his glasses -->
+  <section class="home-section" aria-labelledby="glasses-heading">
+    <h2 id="glasses-heading" class="section-heading">In his glasses</h2>
+    <div class="glasses-layout">
+      <figure class="glasses-figure">
+        <img src="/web/assets/glasses_hud.jpg" alt="Glasses view: SAM 3.1 boxes on the walker and floor lamp, with the whisper Your walker &mdash; last seen just now, straight ahead, close.">
+        <figcaption class="glasses-caption">Simulation running the real models &mdash; SAM 3.1 on each frame.</figcaption>
+      </figure>
+      <div class="glasses-text">
+        <p class="glasses-lead">The same check, from Dad&rsquo;s point of view. He wears the camera, so nobody films him.</p>
+        <p><strong>Whispers where things are.</strong> Walker &mdash; ahead, close; floor lamp &mdash; on your left.</p>
+        <p><strong>Remembers where he left them.</strong> Ask &ldquo;where is my walker?&rdquo; and it answers with the last place it saw it &mdash; never a guess.</p>
+        <p><strong>Asks before it tells.</strong> A fall alert from any sensor starts with &ldquo;Are you OK?&rdquo; &mdash; then only words reach the family.</p>
+        <div class="hero-actions glasses-actions">
+          <a class="btn btn-primary" href="/glasses">Try the glasses simulation</a>
+        </div>
+        <p class="glasses-note">A labelled simulation today; live capture from glasses is on the roadmap.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- Private by design -->
   <section class="home-section" aria-labelledby="privacy-heading">
     <h2 id="privacy-heading" class="section-heading">Private by design</h2>
@@ -360,10 +384,6 @@
         <li>Watch continuously or film anyone who hasn&rsquo;t agreed.</li>
         <li>Say he took his pills &mdash; only where they were last seen, and to check.</li>
       </ul>
-    </div>
-
-    <div class="hero-actions future-actions">
-      <a class="btn btn-primary" href="/glasses">Try the glasses simulation</a>
     </div>
   </section>
 

@@ -2,40 +2,6 @@
    Tokens, base type, buttons, plates, risk tags and focus/::selection
    theming come from /web/app.css, linked first. */
 
-/* ---------- Sticky top bar ---------- */
-
-.site-bar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: var(--sheet);
-  border-bottom: 1px solid var(--rule);
-}
-
-.site-bar-inner {
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: 10px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.site-wordmark {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.3rem;
-  color: var(--ink);
-  text-decoration: none;
-  white-space: nowrap;
-}
-.site-wordmark:hover { text-decoration: underline; text-underline-offset: 3px; }
-
-.site-nav { display: flex; align-items: center; gap: 20px; }
-.site-nav > a:not(.btn) { font-size: .95rem; font-weight: 500; }
-.site-cta { min-height: 40px; padding: 8px 16px; }
-
 /* ---------- Page frame ---------- */
 
 .home-main {
@@ -302,6 +268,39 @@ a.btn-primary { color: #fff; }
   width: 12px; height: 12px; border-radius: 50%; background: var(--ink-faint);
 }
 
+/* ---------- In his glasses ---------- */
+
+.glasses-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.glasses-figure { margin: 0; min-width: 0; }
+.glasses-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+}
+.glasses-caption {
+  color: var(--ink-2);
+  font-size: .88rem;
+  margin: 10px 0 0;
+}
+
+.glasses-text { min-width: 0; }
+.glasses-lead { font-size: 1.08rem; line-height: 1.6; margin: 0; }
+.glasses-text p { max-width: 52ch; }
+.glasses-actions { margin-top: 24px; }
+.glasses-note { color: var(--ink-2); font-size: .9rem; margin: 14px 0 0; }
+
+@media (min-width: 900px) {
+  .glasses-layout { grid-template-columns: minmax(0, 1.38fr) minmax(0, 1fr); gap: 48px; }
+}
+
 /* ---------- Privacy ---------- */
 
 .privacy-grid { display: grid; grid-template-columns: 1fr; gap: 0; }
@@ -494,8 +493,6 @@ a.btn-primary { color: #fff; }
   overflow-wrap: break-word;
 }
 
-.future-actions { margin-top: 34px; }
-
 @media (min-width: 900px) {
   .horizons { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; }
   .stories { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -513,7 +510,6 @@ a.btn-primary { color: #fff; }
 
 @media (max-width: 899px) {
   .home-main { padding: 0 16px; }
-  .site-bar-inner { padding: 10px 16px; }
   .home-footer { padding-left: 16px; padding-right: 16px; }
   .hero { padding: 40px 0 48px; }
   .hero-heading { font-size: 2.6rem; }
@@ -523,7 +519,6 @@ a.btn-primary { color: #fff; }
   .numbers-line { font-size: 1.8rem; }
   .final-heading { font-size: 2.2rem; }
   .step { grid-template-columns: 48px minmax(0, 1fr); gap: 4px 14px; }
-  .site-nav > a:not(.btn) { display: none; }
   .horizons { gap: 30px; margin-top: 30px; }
   .horizon-label { font-size: 1.35rem; }
   .future-block { margin-top: 44px; }
@@ -531,6 +526,7 @@ a.btn-primary { color: #fff; }
   .stories { gap: 24px; }
   .story blockquote { font-size: 1.12rem; }
   .never-list li { font-size: 1.1rem; }
+  .glasses-layout { gap: 22px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

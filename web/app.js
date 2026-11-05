@@ -329,6 +329,7 @@ function fmtIsoDate(value) {
 }
 
 function initDate() {
+  if (!els.todayDate) return; // the masthead date moved out with the shared nav
   const now = new Date();
   els.todayDate.dateTime = now.toISOString().slice(0, 10);
   els.todayDate.textContent = now.toLocaleDateString(undefined, {

@@ -14,15 +14,17 @@
 <body>
 <div class="sheet family-sheet">
 
-  <header class="masthead family-masthead">
-    <div class="masthead-top">
-      <div class="wordmark-block">
-        <a class="wordmark family-wordmark" href="/">Second Look</a>
-        <span class="wordmark-sub" aria-current="page">Family feed</span>
-      </div>
-      <div class="masthead-right family-masthead-right">
+  <header class="site-nav">
+    <div class="site-nav__inner">
+      <a class="site-nav__brand" href="/">Second Look</a>
+      <nav class="site-nav__links" aria-label="Main">
+        <a class="site-nav__link" href="/app">Room check</a>
+        <a class="site-nav__link" href="/family" aria-current="page">Family feed</a>
+        <a class="site-nav__link" href="/glasses">In his glasses</a>
+      </nav>
+      <div class="site-nav__actions">
         <span id="live-indicator" class="mono live-indicator" role="status" aria-live="polite">reconnecting…</span>
-        <a class="btn btn-primary" href="/app">Check a room</a>
+        <a class="site-nav__cta" href="/app?sample=1">Try it now</a>
       </div>
     </div>
   </header>
