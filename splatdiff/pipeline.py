@@ -995,6 +995,25 @@ def run(before, after, concepts=None, out_dir="outputs", progress=None, on_event
         # 8. Grounding filter (carries risk/risk_reason; coverage drop added)
         kept, dropped = diffmod.grounding_filter(raw_claims, summaries, moved_verdicts,
                                                  watchlist=watchlist_list, coverage=coverage)
+        # A concept can be struck twice (Spark claim + SAM-only pass); show it once.
+        _seen_drop, _deduped = set(), []
+        for _d in dropped:
+            _k = (str(_d.get("concept", "")).lower(), str(_d.get("change", "")))
+            if _k not in _seen_drop:
+                _seen_drop.add(_k)
+                _deduped.append(_d)
+        dropped = _deduped
+        # The summary is written before the filter; if it repeats a struck claim, rebuild it
+        # from what was actually proven so the headline never asserts an unproven change.
+        _summary_text = str(written.get("summary", "") or "")
+        _struck_names = [str(_d.get("concept", "")) for _d in dropped if _d.get("concept")]
+        if _summary_text and any(n and n.lower() in _summary_text.lower() for n in _struck_names):
+            _verb = {"moved": "moved", "added": "is new", "removed": "is gone", "on_floor": "is on the floor"}
+            _proven = [f"{str(k.get('concept', '')).capitalize()} {_verb.get(k.get('change'), k.get('change'))}"
+                       for k in kept]
+            _rebuilt = ("; ".join(_proven) + ".") if _proven else "No change could be proven."
+            _rebuilt += f" {len(dropped)} unproven claim{'s' if len(dropped) != 1 else ''} struck."
+            written["summary"] = _rebuilt
         emit({"stage": "filter", "status": "done", "kept": len(kept), "dropped": len(dropped)})
 
         for claim in list(kept) + list(dropped):

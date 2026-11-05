@@ -243,6 +243,32 @@ def _coverage_drop_reason(change: str, coverage: dict | None) -> str:
                 area = tip
     return f"Not covered by both walkthroughs — re-film {area or 'that corner'} before trusting this."
 
+COVERAGE_CONFIRM = 0.7  # below this, the walkthroughs only partly overlap
+
+
+def _partial_coverage(coverage) -> bool:
+    """True when both walkthroughs only partly overlap (coverage scored but below 0.7)."""
+    if not isinstance(coverage, dict):
+        return False
+    try:
+        return float(coverage.get("score")) < COVERAGE_CONFIRM
+    except (TypeError, ValueError):
+        return False
+
+
+def _on_watchlist(concept: str, watchlist_norm) -> bool:
+    c = str(concept or "").strip().lower()
+    return bool(c) and any(c == w or c in w or w in c for w in (watchlist_norm or []) if w)
+
+
+def _partial_coverage_reason(concept: str, change: str, coverage: dict) -> str:
+    """Why an unwatched added/removed claim is struck when coverage is only partial."""
+    pct = int(round(float(coverage.get("score", 0)) * 100))
+    side = "first" if change == "added" else "second"
+    return (f"The two walkthroughs only partly overlap ({pct}%), so the {concept} may simply have been "
+            f"out of view in the {side} video. Re-film that corner to confirm.")
+
+
 def grounding_filter(raw_claims: list, summaries: dict, moved_verdicts: dict | None = None,
                      watchlist=None, coverage: dict | None = None) -> tuple[list, list]:
     """Keep only claims SAM supports; add SAM-only added/removed claims.
@@ -309,6 +335,10 @@ def grounding_filter(raw_claims: list, summaries: dict, moved_verdicts: dict | N
         if ok and coverage_bad and change in ("added", "removed") and is_anchor(key):
             ok = False
             reason = _coverage_drop_reason(change, coverage)
+        if ok and change in ("added", "removed") and _partial_coverage(coverage) \
+                and not _on_watchlist(key, watchlist_norm):
+            ok = False
+            reason = _partial_coverage_reason(key, change, coverage)
         if ok:
             kept.append({"concept": key, "change": change, "explanation": claim.get("explanation", ""),
                          "safety_note": claim.get("safety_note"), "source": "spark",
@@ -329,6 +359,15 @@ def grounding_filter(raw_claims: list, summaries: dict, moved_verdicts: dict | N
                                 "risk": risk, "risk_reason": risk_reason,
                                 "evidence": _evidence(concept, s),
                                 "reason": _coverage_drop_reason(s["label"], coverage)})
+                continue
+            if _partial_coverage(coverage) and not _on_watchlist(concept, watchlist_norm):
+                risk, risk_reason = _sam_only_risk(concept, s["label"], watchlist_norm)
+                dropped.append({"concept": concept, "change": s["label"],
+                                "explanation": f"SAM 3.1 detected '{concept}' as {s['label']}.",
+                                "safety_note": None, "source": "sam",
+                                "risk": risk, "risk_reason": risk_reason,
+                                "evidence": _evidence(concept, s),
+                                "reason": _partial_coverage_reason(concept, s["label"], coverage)})
                 continue
             risk, risk_reason = _sam_only_risk(concept, s["label"], watchlist_norm)
             kept.append({"concept": concept, "change": s["label"],
