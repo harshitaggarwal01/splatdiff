@@ -143,10 +143,20 @@ def _run_pipeline(run_id: str, before: str, after: str, concepts, watchlist, nar
 
 @app.get("/")
 async def root():
+    # Product page first; fall back to the app itself if it is missing.
+    for name in ("home.html", "index.html"):
+        page = ROOT / "web" / name
+        if page.is_file():
+            return FileResponse(str(page))
+    return HTMLResponse("<!doctype html><html><body><h1>Second Look</h1><p>web/ not found yet.</p></body></html>")
+
+
+@app.get("/app")
+async def app_page():
     index = ROOT / "web" / "index.html"
     if index.is_file():
         return FileResponse(str(index))
-    return HTMLResponse("<!doctype html><html><body><h1>SplatDiff</h1><p>web/index.html not found yet.</p></body></html>")
+    return HTMLResponse("<!doctype html><html><body><h1>Second Look</h1><p>web/index.html not found yet.</p></body></html>")
 
 
 @app.get("/api/sample")

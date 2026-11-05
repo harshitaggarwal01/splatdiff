@@ -3,10 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="SplatDiff compares two room walkthroughs and reports what changed, with evidence for every finding.">
-  <title>SplatDiff — Room check</title>
+  <meta name="description" content="Second Look compares two room walkthroughs and reports what changed, with evidence for every finding.">
+  <title>Second Look — Room check</title>
   <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/web/app.css">
+  <style>
+    /* Slim top bar: the wordmark is the way back to the product page. */
+    .masthead-top .wordmark { color: inherit; text-decoration: none; }
+    .masthead-top .wordmark:hover { text-decoration: underline; text-underline-offset: 4px; }
+    .masthead-top .wordmark:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 2px; }
+    /* "Needs attention" banner: calm brick-ink panel, moss line when all is well. */
+    .attention-banner { margin: 0 0 1.25rem; padding: 1rem 1.15rem; border-radius: 10px; }
+    .attention-banner.is-alert { background: #5f2718; color: #fbeee6; border: 1px solid #4c1e12; }
+    .attention-banner.is-calm { background: #eef2df; color: #3c5227; border: 1px solid #d3ddba; }
+    .attention-title { margin: 0 0 0.5rem; font-size: 1.05rem; }
+    .attention-calm { margin: 0; }
+    .attention-list { margin: 0; padding-left: 1.2rem; }
+    .attention-list li { margin: 0.3rem 0; }
+    .attention-link { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+    .attention-link:hover, .attention-link:focus-visible { text-decoration-thickness: 2px; }
+    .attention-sorted-list { margin-top: 0.6rem; opacity: 0.75; }
+    .attention-sorted-list li.is-sorted { display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; }
+    .attention-sorted-badge { font-size: 0.78em; letter-spacing: 0.04em; text-transform: uppercase; border: 1px solid currentColor; border-radius: 999px; padding: 0.05rem 0.5rem; }
+    .finding.is-sorted, .watch-row.is-sorted { opacity: 0.72; }
+    .attention-highlight { animation: attention-flash 1.8s ease-out; }
+    @keyframes attention-flash {
+      0%, 55% { background-color: #f3d9a4; box-shadow: 0 0 0 3px #b4552d; border-radius: 8px; }
+      100% { background-color: transparent; box-shadow: 0 0 0 0 transparent; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .attention-highlight { animation: none; outline: 3px solid #b4552d; outline-offset: 2px; }
+    }
+  </style>
   <script src="/web/app.js" defer></script>
 </head>
 <body>
@@ -15,7 +43,7 @@
     <header class="masthead">
       <div class="masthead-top">
         <div class="wordmark-block">
-          <span class="wordmark">SplatDiff</span>
+          <a class="wordmark" href="/" aria-label="Second Look — back to the product page">Second Look</a>
           <span class="wordmark-sub">Room check</span>
         </div>
         <div class="masthead-right">
@@ -37,8 +65,8 @@
         <div id="historyList" class="history-list" aria-live="polite"></div>
       </div>
 
-      <h1 class="promise">What changed in Mom&rsquo;s room since your last visit?</h1>
-      <p class="promise-sub">Film the room on each visit. SplatDiff compares the two walkthroughs with Meta&rsquo;s SAM&nbsp;3.1 and Muse&nbsp;Spark, and every finding comes with evidence — or it is struck from the report.</p>
+      <h1 class="promise">What changed in Dad&rsquo;s room since the last visit?</h1>
+      <p class="promise-sub">Film the room the day it is set up safe — after a hospital stay, a near-miss or a new walker. Next visit, anyone can film it again — a sibling, a neighbour, the aide — and you read the report wherever you are. Second Look shows what drifted, and every finding comes with its evidence or is struck from the report.</p>
     </header>
 
     <main>
@@ -53,6 +81,7 @@
               <div class="dropzone-empty" id="dropBeforeEmpty">
                 <svg class="icon icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
                 <span class="dropzone-label">Last visit</span>
+                <span class="dropzone-helper">the safe setup, as the OT or nurse left it</span>
                 <span class="dropzone-hint" id="dropBeforeHint">Click or drop a walkthrough video</span>
               </div>
               <video class="dropzone-video" id="videoBefore" controls playsinline preload="metadata" hidden></video>
@@ -75,15 +104,20 @@
           </div>
         </div>
 
-        <p class="sample-note mono" id="sampleNote" hidden></p>
+        <p class="pan-note">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r="0.5" fill="currentColor"/></svg>
+          <span>Why a 20-second pan? It sees behind chairs and along the floor. Nothing to install, nothing recording between visits.</span>
+        </p>
+
+        <p class="sample-note" id="sampleNote" hidden></p>
 
         <div class="care-row">
           <div class="watchlist-block">
             <label class="field-label" for="tagInput">Must stay put</label>
-            <p class="field-help">Things that should never move — a walker, night medicines, the phone. Press Enter or comma to add.</p>
+            <p class="field-help">Things that should stay put — his walker, night medicines, the phone.</p>
             <div class="tag-box" id="tagBox">
               <span class="tag-list" id="tagList"></span>
-              <input type="text" id="tagInput" class="tag-input" placeholder="Add an item, e.g. walker"
+              <input type="text" id="tagInput" class="tag-input" placeholder="Add: his walker, night medicines, the phone"
                      autocomplete="off" spellcheck="false" aria-label="Add an item that must stay put">
             </div>
           </div>
@@ -114,7 +148,7 @@
           </div>
         </div>
 
-        <div class="actions">
+        <div class="actions" id="actions">
           <button type="button" class="btn btn-primary" id="runBtn" disabled>
             Check the room
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
@@ -123,6 +157,7 @@
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
             Use the sample room
           </button>
+          <p class="consent-note">Film with Dad&rsquo;s knowledge — ideally together. Clips are sent to Meta&rsquo;s model API to find objects.</p>
           <p class="actions-error" id="runError" role="alert" hidden></p>
         </div>
       </section>
@@ -138,7 +173,8 @@
       </section>
 
       <section class="report" id="reportSection" aria-labelledby="reportSummary" hidden>
-        <p class="print-header" id="printHeader">Room check</p>
+        <div class="attention-banner" id="attentionBanner" role="region" aria-label="Needs attention" hidden></div>
+        <p class="print-header" id="printHeader">Second Look — Room check</p>
 
         <h2 class="report-summary" id="reportSummary"></h2>
         <p class="report-stats mono" id="reportStats"></p>
@@ -162,6 +198,7 @@
 
         <footer class="report-footer">
           <div class="footer-ledger" id="footerLedger"></div>
+          <p class="report-disclaimer">Second Look reports changes in the room, not health, and is not a medical device. For a high finding: put things back, tell the family, and ask Dad&rsquo;s OT or nurse if you are unsure.</p>
           <div class="footer-actions">
             <button type="button" class="btn btn-quiet" id="printBtn">
               <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
@@ -170,6 +207,10 @@
             <button type="button" class="btn btn-quiet" id="copyBtn">
               <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
               <span id="copyBtnText">Copy summary</span>
+            </button>
+            <button type="button" class="btn btn-quiet" id="shareBtn">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+              <span id="shareBtnText">Send to family</span>
             </button>
           </div>
         </footer>

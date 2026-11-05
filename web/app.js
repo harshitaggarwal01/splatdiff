@@ -1,8 +1,10 @@
 "use strict";
 
-/* SplatDiff front-end. Vanilla JS, same-origin API per build_log/UI_CONTRACT.md. */
+/* Second Look front-end (engine: SplatDiff). Vanilla JS, same-origin API per build_log/UI_CONTRACT.md. */
 
 const $ = (id) => document.getElementById(id);
+
+const DEFAULT_TITLE = "Second Look — Room check";
 
 const els = {
   todayDate: $("todayDate"),
@@ -34,6 +36,7 @@ const els = {
   narrationCheck: $("narrationCheck"),
   runBtn: $("runBtn"),
   sampleBtn: $("sampleBtn"),
+  actions: $("actions"),
   runError: $("runError"),
   liveSection: $("liveSection"),
   stageList: $("stageList"),
@@ -42,6 +45,7 @@ const els = {
   liveErrorText: $("liveErrorText"),
   retryBtn: $("retryBtn"),
   reportSection: $("reportSection"),
+  attentionBanner: $("attentionBanner"),
   printHeader: $("printHeader"),
   reportSummary: $("reportSummary"),
   reportStats: $("reportStats"),
@@ -56,6 +60,8 @@ const els = {
   printBtn: $("printBtn"),
   copyBtn: $("copyBtn"),
   copyBtnText: $("copyBtnText"),
+  shareBtn: $("shareBtn"),
+  shareBtnText: $("shareBtnText"),
 };
 
 const state = {
@@ -68,6 +74,7 @@ const state = {
   runId: null,
   eventSource: null,
   currentResult: null,
+  attentionItems: [],
   stageRows: new Map(),
   trackChips: new Map(),
   inventoryConcepts: [],
@@ -120,13 +127,20 @@ function cleanExplanation(value) {
   s = s.replace(/\bbox\s*\[[^\]]*\]/gi, "");
   s = s.replace(/\[\s*\d+(?:\s*,\s*\d+){2,}\s*\]/g, "");
   s = s.replace(/\(\s*(?:conf|confidence)\b[^)]*\)/gi, "");
+  /* Leftover coordinate-removal fragments, e.g. "with best at,", "best at", "at conf 0.87". */
+  s = s.replace(/\bwith\s+best\s+at\b[^,.;!?]*/gi, "");
+  s = s.replace(/\bbest\s+at\b[^,.;!?]*/gi, "");
+  s = s.replace(/\bat\s+conf(?:idence)?\b\s*[:=]?\s*\d+(?:\.\d+)?/gi, "");
+  s = s.replace(/\bwith\s+at\b\s*,?/gi, "");
   s = s.replace(/\bconf(?:idence)?\s*[:=]?\s*\d+(?:\.\d+)?\b/gi, "");
+  s = s.replace(/\b(?:with|at)\s*(?=[,.;!?]|$)/gi, "");
   s = s.replace(/\(\s*[,;:]?\s*\)/g, "");
   s = s.replace(/\s+([,.;:!?])/g, "$1");
   s = s.replace(/,(\s*,)+/g, ",");
   s = s.replace(/([.!?])\s*,/g, "$1");
   s = s.replace(/\s{2,}/g, " ");
   s = s.replace(/^[\s,;]+/, "");
+  s = s.replace(/\s+(?:with|at)\s*$/i, "");
   return s.trim();
 }
 
@@ -143,6 +157,10 @@ function fmtRunDate(runId) {
   if (!d) return String(runId || "");
   return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) +
     " · " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+function fmtShareDate(result) {
+  const d = parseRunDate(result && result.run_id) || new Date();
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
 }
 
 function initDate() {
@@ -310,7 +328,7 @@ async function loadSample() {
       renderTags(null);
     }
     els.sampleNote.hidden = false;
-    els.sampleNote.textContent = "Sample loaded: " + state.sampleLabel;
+    els.sampleNote.textContent = "Synthetic test room made with Muse Image, so every result can be scored. Real footage works the same way.";
     updateRunButton();
     els.runBtn.focus();
   } catch (err) {
@@ -905,6 +923,12 @@ function normConceptKey(value) {
   return String(value == null ? "" : value).toLowerCase().replace(/_/g, " ")
     .replace(/\s+/g, " ").trim();
 }
+function slugForId(value) {
+  return normConceptKey(value).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "item";
+}
+function attentionTargetId(prefix, concept, index) {
+  return prefix + "-" + (isNum(index) ? index : 0) + "-" + slugForId(concept);
+}
 
 function aliasFor(result, concept) {
   try {
@@ -1072,12 +1096,107 @@ function trackedAsHtml(result, concept) {
   return '<p class="tracked-as mono">tracked as “' + escapeHtml(alias) + "”</p>";
 }
 
-function renderFinding(claim, result) {
+/* ---------------- "Do this next" + "Mark as sorted" ---------------- */
+
+function doNextSteps(kind, conceptRaw) {
+  const concept = String(conceptRaw == null ? "" : conceptRaw).trim().replace(/\s+/g, " ").toLowerCase() || "item";
+  const k = String(kind || "").toLowerCase();
+  if (k === "moved") {
+    return [
+      "Put the " + concept + " back where it was set up, within reach.",
+      "Ask Dad to show you he can reach it.",
+      "Next visit, film this corner again — Second Look will confirm it is back.",
+    ];
+  }
+  if (k === "removed" || k === "missing") {
+    return [
+      "Find the " + concept + " and put it back where Dad expects it.",
+      "If it was taken away on purpose, update the watchlist.",
+      "Re-check next visit.",
+    ];
+  }
+  if (k === "added" || k === "appeared") {
+    return [
+      "If the " + concept + " is on the floor or in a walkway, move it out of the path.",
+      "Check the route from bed to bathroom is clear.",
+      "Re-check next visit.",
+    ];
+  }
+  if (k === "not_seen") {
+    return [
+      "Look for the " + concept + " in person.",
+      "Film that corner slowly next visit.",
+    ];
+  }
+  return [];
+}
+
+function sortedKey(result, concept) {
+  const runId = (result && result.run_id) || state.runId || "run";
+  return "second-look:sorted:" + String(runId) + ":" + normConceptKey(concept);
+}
+function readSorted(result, concept) {
+  try { return window.localStorage.getItem(sortedKey(result, concept)) === "1"; }
+  catch (e) { return false; }
+}
+function writeSorted(result, concept, sorted) {
+  try {
+    if (sorted) window.localStorage.setItem(sortedKey(result, concept), "1");
+    else window.localStorage.removeItem(sortedKey(result, concept));
+  } catch (e) { /* private mode / storage unavailable: toggle still works for this view */ }
+}
+
+function applySorted(owner, btn, stateEl, sorted) {
+  owner.classList.toggle("is-sorted", sorted);
+  btn.setAttribute("aria-pressed", sorted ? "true" : "false");
+  if (stateEl) stateEl.hidden = !sorted;
+}
+
+function makeSortedControl(owner, result, concept) {
+  const wrap = document.createElement("div");
+  wrap.className = "sorted-row";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "btn btn-quiet sorted-btn";
+  btn.innerHTML = ICON_CHECK + "<span>Mark as sorted</span>";
+  btn.setAttribute("aria-pressed", "false");
+  const stateEl = document.createElement("span");
+  stateEl.className = "sorted-state";
+  stateEl.textContent = "Sorted";
+  stateEl.hidden = true;
+  wrap.appendChild(btn);
+  wrap.appendChild(stateEl);
+  applySorted(owner, btn, stateEl, readSorted(result, concept));
+  btn.addEventListener("click", () => {
+    const next = btn.getAttribute("aria-pressed") !== "true";
+    writeSorted(result, concept, next);
+    applySorted(owner, btn, stateEl, next);
+    /* Sorted items leave the "Needs attention" count (and document title) at once. */
+    if (state.currentResult) renderAttentionBanner(state.currentResult);
+  });
+  return wrap;
+}
+
+function makeDoNext(kind, concept, result, owner) {
+  const steps = doNextSteps(kind, concept);
+  if (!steps.length) return null;
+  const block = document.createElement("div");
+  block.className = "do-next";
+  block.innerHTML =
+    '<p class="do-next-title">Do this next</p>' +
+    "<ol>" + steps.map((s) => "<li>" + escapeHtml(s) + "</li>").join("") + "</ol>";
+  block.appendChild(makeSortedControl(owner, result, concept));
+  return block;
+}
+
+function renderFinding(claim, result, index) {
   claim = claim || {};
   const risk = riskOf(claim);
   const change = String(claim.change || "").toLowerCase();
   const el = document.createElement("article");
   el.className = "finding";
+  el.id = attentionTargetId("finding", claim.concept || "object", index);
+  el.dataset.concept = String(claim.concept || "");
   const explanation = cleanExplanation(claim.explanation || "");
   el.innerHTML =
     '<div class="finding-top">' +
@@ -1089,6 +1208,12 @@ function renderFinding(claim, result) {
     (explanation ? '<p class="finding-text">' + escapeHtml(explanation) + "</p>" : "") +
     (claim.safety_note ? '<p class="finding-note">' + escapeHtml(claim.safety_note) + "</p>" : "") +
     evidenceDisclosure(claim, result);
+  if (risk === "high" || risk === "medium") {
+    const block = makeDoNext(change, claim.concept, result, el);
+    if (block) el.appendChild(block);
+  } else {
+    el.appendChild(makeSortedControl(el, result, claim.concept));
+  }
   return el;
 }
 
@@ -1113,50 +1238,175 @@ function renderStruck(claim, result, index) {
 }
 
 const WATCH_STATUS_WORDS = {
-  in_place: "still in place",
+  in_place: "seen where it was",
   moved: "moved",
-  missing: "missing",
-  appeared: "appeared",
-  not_seen: "not seen",
+  missing: "gone from where it was",
+  appeared: "new in the room",
+  not_seen: "not seen in this video",
+};
+
+const WATCH_STATUS_NOTES = {
+  in_place: "We can see it is there, not that it is reachable or working.",
+  not_seen: "Not the same as missing — check it in person.",
 };
 
 function renderWatchlist(result) {
   const items = Array.isArray(result.watchlist_status) ? result.watchlist_status : [];
   els.watchlistBlock.hidden = !items.length;
   els.watchlistRows.innerHTML = "";
-  items.forEach((item) => {
+  items.forEach((item, rowIndex) => {
     item = item || {};
     const risk = riskOf(item);
-    const status = WATCH_STATUS_WORDS[item.status] || String(item.status || "not seen").replace(/_/g, " ");
+    const statusKey = String(item.status || "not_seen").toLowerCase();
+    const status = WATCH_STATUS_WORDS[statusKey] || String(item.status || "not seen").replace(/_/g, " ");
+    const concept = item.concept || item.item || "";
     const row = document.createElement("div");
     row.className = "watch-row";
+    row.id = attentionTargetId("watch", concept || "item", rowIndex);
+    row.dataset.concept = String(concept || "");
     const itemImages = (item.images && (item.images.before || item.images.after))
       ? { before: normalizeImageUrl(item.images.before), after: normalizeImageUrl(item.images.after) }
-      : claimImages({ concept: item.concept || item.item || "" }, result);
+      : claimImages({ concept }, result);
     const thumbs = [];
     if (itemImages.before) {
       thumbs.push('<img src="' + escapeHtml(itemImages.before) + '" alt="Last visit: ' +
-        escapeHtml(item.concept || "") + '" loading="lazy">');
+        escapeHtml(concept) + '" loading="lazy">');
     }
     if (itemImages.after) {
       thumbs.push('<img src="' + escapeHtml(itemImages.after) + '" alt="Today: ' +
-        escapeHtml(item.concept || "") + '" loading="lazy">');
+        escapeHtml(concept) + '" loading="lazy">');
     }
+    const statusNote = WATCH_STATUS_NOTES[statusKey] || "";
+    const serverNote = item.note && String(item.note) !== statusNote ? String(item.note) : "";
     row.innerHTML =
-      '<div class="watch-main"><span class="watch-name">' + escapeHtml(item.concept || item.item || "") + "</span>" +
+      '<div class="watch-main"><span class="watch-name">' + escapeHtml(concept) + "</span>" +
       ' <span class="watch-status">— ' + escapeHtml(status) + "</span>" +
-      trackedAsHtml(result, item.concept || item.item || "") +
-      (item.note ? '<div class="watch-note">' + escapeHtml(item.note) + "</div>" : "") + "</div>" +
+      trackedAsHtml(result, concept) +
+      (statusNote ? '<div class="watch-note">' + escapeHtml(statusNote) + "</div>" : "") +
+      (serverNote ? '<div class="watch-note">' + escapeHtml(serverNote) + "</div>" : "") + "</div>" +
       '<span class="risk-tag risk-' + risk + '"><span class="risk-dot" aria-hidden="true"></span>' +
       escapeHtml(risk) + " risk</span>" +
       (thumbs.length ? '<div class="watch-thumbs">' + thumbs.join("") + "</div>" : "");
+    if (statusKey === "moved" || statusKey === "missing" || statusKey === "not_seen") {
+      const main = row.querySelector(".watch-main");
+      const block = makeDoNext(statusKey, concept, result, row);
+      if (block && main) main.appendChild(block);
+    }
     els.watchlistRows.appendChild(row);
+  });
+}
+
+/* ---------------- "Needs attention" banner ---------------- */
+
+const WATCH_ATTENTION_STATUSES = ["missing", "moved", "not_seen"];
+
+function watchAttentionPhrase(statusKey) {
+  if (statusKey === "missing") return "gone from where it was";
+  if (statusKey === "moved") return "moved";
+  if (statusKey === "not_seen") return "not seen in this video";
+  if (statusKey === "appeared") return "new in the room";
+  return "needs attention";
+}
+
+/* Kept HIGH findings + watchlist rows that are HIGH or missing/moved/not_seen,
+   de-duplicated by concept (a concept already listed as a finding is not
+   listed again as a watchlist row). Sorted items stay listed, marked sorted. */
+function collectAttentionItems(result) {
+  const items = [];
+  const seen = new Set();
+  const kept = sortedByRisk(
+    Array.isArray(result.kept_claims) ? result.kept_claims
+      : Array.isArray(result.claims) ? result.claims : []);
+  kept.forEach((claim, i) => {
+    claim = claim || {};
+    if (riskOf(claim) !== "high") return;
+    const concept = String(claim.concept || "Object");
+    const change = String(claim.change || "").toLowerCase();
+    items.push({
+      concept,
+      kind: change,
+      label: sentenceCase(concept) + " — " + change,
+      targetId: attentionTargetId("finding", concept, i),
+      sorted: readSorted(result, concept),
+    });
+    seen.add(normConceptKey(concept));
+  });
+  const watch = Array.isArray(result.watchlist_status) ? result.watchlist_status : [];
+  watch.forEach((item, i) => {
+    item = item || {};
+    const statusKey = String(item.status || "not_seen").toLowerCase();
+    if (riskOf(item) !== "high" && !WATCH_ATTENTION_STATUSES.includes(statusKey)) return;
+    const concept = String(item.concept || item.item || "Item");
+    if (seen.has(normConceptKey(concept))) return;
+    seen.add(normConceptKey(concept));
+    items.push({
+      concept,
+      kind: statusKey,
+      label: sentenceCase(concept) + " — " + watchAttentionPhrase(statusKey),
+      targetId: attentionTargetId("watch", concept, i),
+      sorted: readSorted(result, concept),
+    });
+  });
+  return items;
+}
+
+function highlightAttentionTarget(targetId) {
+  const target = document.getElementById(targetId);
+  if (!target) return;
+  target.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" });
+  target.classList.remove("attention-highlight");
+  /* Restart the highlight even if this target was just highlighted. */
+  void target.offsetWidth;
+  target.classList.add("attention-highlight");
+  window.setTimeout(() => target.classList.remove("attention-highlight"), 1900);
+}
+
+function renderAttentionBanner(result) {
+  if (!els.attentionBanner || !result) return;
+  const items = collectAttentionItems(result);
+  state.attentionItems = items;
+  const pending = items.filter((item) => !item.sorted);
+  const sortedItems = items.filter((item) => item.sorted);
+  const n = pending.length;
+
+  document.title = n > 0 ? "(" + n + ") " + DEFAULT_TITLE : DEFAULT_TITLE;
+
+  const sortedListHtml = sortedItems.length
+    ? '<ul class="attention-list attention-sorted-list">' + sortedItems.map((item) =>
+        '<li class="is-sorted"><span>' + escapeHtml(item.label) + '</span>' +
+        '<span class="attention-sorted-badge">Sorted</span></li>').join("") + "</ul>"
+    : "";
+
+  if (!n) {
+    els.attentionBanner.className = "attention-banner is-calm";
+    els.attentionBanner.innerHTML =
+      '<p class="attention-calm">Nothing needs attention — every watched item was seen where it was.</p>' +
+      sortedListHtml;
+    els.attentionBanner.hidden = false;
+    return;
+  }
+
+  els.attentionBanner.className = "attention-banner is-alert";
+  els.attentionBanner.innerHTML =
+    '<h3 class="attention-title">Needs attention: ' + n + "</h3>" +
+    '<ul class="attention-list">' + pending.map((item) =>
+      '<li><a class="attention-link" href="#' + escapeHtml(item.targetId) +
+      '" data-target="' + escapeHtml(item.targetId) + '">' +
+      escapeHtml(item.label) + "</a></li>").join("") + "</ul>" +
+    sortedListHtml;
+  els.attentionBanner.hidden = false;
+  els.attentionBanner.querySelectorAll(".attention-link").forEach((link) => {
+    link.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      highlightAttentionTarget(link.getAttribute("data-target"));
+    });
   });
 }
 
 function renderReport(result) {
   if (!result || typeof result !== "object") return;
   state.currentResult = result;
+  if (result.run_id) state.runId = result.run_id;
   const kept = Array.isArray(result.kept_claims) ? result.kept_claims
     : Array.isArray(result.claims) ? result.claims : [];
   const dropped = Array.isArray(result.dropped) ? result.dropped : [];
@@ -1175,15 +1425,16 @@ function renderReport(result) {
     " · " + samRequests + " SAM tracks · " + fmtCost(result.cost_usd) + " · " + fmtSeconds(result.latency_s);
 
   const runDate = parseRunDate(result.run_id);
-  els.printHeader.textContent = "Room check — " + (runDate ?
+  const printDate = runDate ?
     runDate.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" }) :
-    new Date().toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" }));
+    new Date().toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
+  els.printHeader.textContent = "Second Look — Room check, " + printDate;
 
   renderWatchlist(result);
 
   const sortedKept = sortedByRisk(kept);
   els.findingsList.innerHTML = "";
-  sortedKept.forEach((claim) => els.findingsList.appendChild(renderFinding(claim, result)));
+  sortedKept.forEach((claim, i) => els.findingsList.appendChild(renderFinding(claim, result, i)));
   els.findingsEmpty.hidden = sortedKept.length > 0;
 
   els.struckBlock.hidden = false;
@@ -1200,10 +1451,20 @@ function renderReport(result) {
     dropped.forEach((claim, i) => els.struckList.appendChild(renderStruck(claim, result, i)));
   }
 
-  const models = Array.isArray(result.models) && result.models.length ?
-    result.models : ["muse-spark-1.3", "sam-3.1"];
-  const footerBits = models.map((m) =>
-    '<span class="model-chip">' + escapeHtml(m) + "</span>").join("");
+  renderAttentionBanner(result);
+
+  const models = Array.isArray(result.models) ? result.models : [];
+  const ledgerModels = [
+    ["muse-spark-1.3", "reasons"],
+    ["sam-3.1", "proves"],
+  ];
+  if (models.includes("muse-voice-transcribe-1.0")) {
+    ledgerModels.push(["muse-voice-transcribe-1.0", "listens"]);
+  }
+  const footerBits =
+    '<span class="ledger-heading">Three Meta models ran this check</span>' +
+    ledgerModels.map((pair) =>
+      '<span class="model-chip">' + escapeHtml(pair[0]) + " · " + escapeHtml(pair[1]) + "</span>").join("");
   const statBits = [
     isNum(stats.spark_calls) ? stats.spark_calls + " Spark calls" : null,
     isNum(stats.sam_requests) ? stats.sam_requests + " SAM requests" : null,
@@ -1213,7 +1474,8 @@ function renderReport(result) {
     "took " + fmtSeconds(result.latency_s),
     result.run_id ? "run " + result.run_id : null,
   ].filter(Boolean).map((s) => '<span class="footer-stat">' + escapeHtml(s) + "</span>").join("");
-  els.footerLedger.innerHTML = footerBits + statBits;
+  els.footerLedger.innerHTML = footerBits + statBits +
+    '<p class="ledger-credit">Built with Muse Image (test room) and Muse Wonder (code). Engine: SplatDiff.</p>';
 
   els.reportSection.hidden = false;
   els.reportSection.classList.remove("report-animated");
@@ -1226,12 +1488,12 @@ function renderReport(result) {
   }
 }
 
-/* ---------------- Copy / print ---------------- */
+/* ---------------- Copy / print / send to family ---------------- */
 
 function buildCopyText(result) {
   if (!result) return "";
   const lines = [];
-  lines.push("SplatDiff room check" + (result.run_id ? " (" + fmtRunDate(result.run_id) + ")" : ""));
+  lines.push("Second Look room check" + (result.run_id ? " (" + fmtRunDate(result.run_id) + ")" : ""));
   if (result.summary) lines.push("", result.summary);
   const kept = sortedByRisk(result.kept_claims || result.claims || []);
   if (kept.length) {
@@ -1278,6 +1540,66 @@ async function copySummary() {
   }
   els.copyBtnText.textContent = "Copied";
   window.setTimeout(() => { els.copyBtnText.textContent = "Copy summary"; }, 2000);
+}
+
+/* Plain-text share body, kept under ~1800 chars so mail clients do not choke. */
+function buildShareText(result) {
+  if (!result) return "";
+  const disclaimer = "Not a medical device.";
+  const lines = [];
+  lines.push("Second Look — room check " + fmtShareDate(result));
+  if (result.summary) lines.push("", String(result.summary).trim());
+
+  const attention = (Array.isArray(state.attentionItems) ? state.attentionItems : collectAttentionItems(result))
+    .filter((item) => !item.sorted);
+  if (attention.length) {
+    lines.push("", "Needs attention:");
+    attention.forEach((item) => {
+      lines.push("- " + item.label);
+      const steps = doNextSteps(item.kind, item.concept);
+      const usable = steps.length ? steps : ["Check this item in person.", "Re-check next visit."];
+      lines.push("  Do this next: " + usable.map((s, i) => (i + 1) + ". " + s).join(" "));
+    });
+  } else {
+    lines.push("", "Nothing needs attention — every watched item was seen where it was.");
+  }
+
+  const dropped = Array.isArray(result.dropped) ? result.dropped : [];
+  if (dropped.length) {
+    lines.push("", "Struck from the report (not supported by evidence):");
+    dropped.forEach((c) => {
+      lines.push("- " + sentenceCase(c.concept || "") + " — " + String(c.change || "").toLowerCase() +
+        (c.reason ? ": " + c.reason : ""));
+    });
+  }
+
+  lines.push("", disclaimer);
+  let text = lines.join("\n");
+  if (text.length > 1800) {
+    const budget = 1800 - disclaimer.length - 2;
+    text = text.slice(0, budget).replace(/\s+\S*$/, "").trimEnd() + "\n" + disclaimer;
+  }
+  return text;
+}
+
+async function shareSummary() {
+  const result = state.currentResult;
+  if (!result) return;
+  const title = "Second Look — room check " + fmtShareDate(result);
+  const text = buildShareText(result);
+  if (typeof navigator.share === "function") {
+    try {
+      await navigator.share({ title, text });
+      return;
+    } catch (err) {
+      /* The family member closed the share sheet — do not fall through to email. */
+      if (err && err.name === "AbortError") return;
+      /* Any other share failure falls back to email below. */
+    }
+  }
+  const mailto = "mailto:?subject=" + encodeURIComponent(title) +
+    "&body=" + encodeURIComponent(text);
+  window.location.href = mailto;
 }
 
 /* ---------------- History ---------------- */
@@ -1376,12 +1698,28 @@ function init() {
   });
   els.printBtn.addEventListener("click", () => window.print());
   els.copyBtn.addEventListener("click", copySummary);
+  if (els.shareBtn) els.shareBtn.addEventListener("click", shareSummary);
   document.addEventListener("keydown", (ev) => {
     if (ev.key === "Escape" && !els.historyDrawer.hidden) {
       els.historyDrawer.hidden = true;
       els.historyBtn.setAttribute("aria-expanded", "false");
     }
   });
+
+  /* Deep link ?sample=1: run the same action as "Use the sample room"
+     (previews + watchlist), then scroll to the actions. Never auto-start
+     the check itself — the user still presses "Check the room". */
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("sample") === "1") {
+      Promise.resolve(loadSample()).then(() => {
+        const target = els.actions || els.runBtn;
+        if (target) {
+          target.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" });
+        }
+      });
+    }
+  } catch (e) { /* malformed query string: load the page normally */ }
 }
 
 if (document.readyState === "loading") {
