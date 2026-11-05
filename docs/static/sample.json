@@ -1,0 +1,10 @@
+{
+  "before": "/splatdiff/data/sample_before.mp4",
+  "after": "/splatdiff/data/sample_after.mp4",
+  "watchlist": [
+    "walker",
+    "floor lamp",
+    "backpack"
+  ],
+  "label": "Synthetic living room (Muse Image)"
+}

@@ -1,0 +1,3 @@
+done in 71s, 46519 chars, usage={'input_tokens': 17310, 'input_tokens_details': {'cached_tokens': 0}, 'output_tokens': 15140, 'output_tokens_details': {'reasoning_tokens': 2802}, 'total_tokens': 32450}
+wrote:
+  web/browser-pipeline.js

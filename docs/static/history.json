@@ -1,0 +1,35 @@
+[
+  {
+    "run_id": "20261104_195619",
+    "summary": "Backpack removed from living area, suitcase added by sofa/window, and watchlist floor lamp relocated to opposite side of seating.",
+    "kept": 3,
+    "dropped": 0,
+    "cost_usd": 0.008688,
+    "latency_s": 21.581,
+    "thumb": "/splatdiff/outputs/20261104_195619/before_backpack.jpg",
+    "room": "Bedroom",
+    "date": "2026-11-04T19:56:19-05:00"
+  },
+  {
+    "run_id": "20261104_192044",
+    "summary": "Backpack removed, suitcase added, and watchlist floor lamp repositioned to opposite side of seating area. Walker and other furniture remain in place.",
+    "kept": 3,
+    "dropped": 0,
+    "cost_usd": 0.009793,
+    "latency_s": 20.436,
+    "thumb": "/splatdiff/outputs/20261104_192044/before_backpack.jpg",
+    "room": "Bedroom",
+    "date": "2026-11-04T19:20:44-05:00"
+  },
+  {
+    "run_id": "20261104_182731",
+    "summary": "Room shows two additions, one removal, and one relocation: an armchair and suitcase appeared, the backpack was removed, and the floor lamp moved to the opposite end of the seating area.",
+    "kept": 3,
+    "dropped": 1,
+    "cost_usd": 0.3312,
+    "latency_s": 56.312,
+    "thumb": null,
+    "room": null,
+    "date": "2026-11-04T18:27:31-05:00"
+  }
+]

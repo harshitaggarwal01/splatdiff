@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script>window.SL_STATIC=true;window.SL_BASE="/splatdiff";</script><script src="/splatdiff/web/static-mode.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>In his glasses — Second Look</title>
+<meta name="description" content="A simulation of a heads-up view in smart glasses worn by Dad, running the real models on a sample walkthrough or this computer's camera.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Literata:opsz,wght@7..72,400;7..72,600&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/splatdiff/web/app.css">
+<link rel="stylesheet" href="/splatdiff/web/glasses.css">
+</head>
+<body>
+
+<header class="glasses-bar">
+  <div class="glasses-bar-inner">
+    <a class="glasses-wordmark" href="/splatdiff/">Second Look</a>
+    <nav class="glasses-nav" aria-label="Main">
+      <a href="/splatdiff/family/">Family feed</a>
+      <a href="/splatdiff/app/">Check a room</a>
+    </nav>
+  </div>
+</header>
+
+<main class="glasses-main">
+  <h1 class="glasses-title">In his glasses</h1>
+  <p class="glasses-banner">A simulation of a heads-up view in smart glasses worn by Dad, running the real models on a sample walkthrough or this computer&rsquo;s camera. Not an integration with any glasses product.</p>
+
+  <div class="glasses-layout">
+    <div class="glasses-primary">
+      <section class="lens" id="lens" aria-label="Simulated glasses view">
+        <video id="lensVideo" class="lens-video" src="/splatdiff/data/sample_after.mp4" loop muted playsinline preload="metadata" aria-label="Sample walkthrough video, or this computer&rsquo;s camera when selected"></video>
+        <canvas id="hud" class="lens-hud" aria-hidden="true"></canvas>
+        <p class="lens-badge mono" id="modelBadge" aria-hidden="true">sam-3.1 &middot; &mdash;</p>
+        <p class="whisper" id="whisper" aria-live="polite"></p>
+
+        <div class="fall-overlay" id="fallOverlay" hidden role="alertdialog" aria-modal="false" aria-labelledby="fallTitle" aria-describedby="fallCountdown">
+          <div class="fall-inner" id="fallPrompt">
+            <p class="fall-title" id="fallTitle">Are you OK, Dad?</p>
+            <button type="button" class="btn btn-primary fall-btn" id="fallFineBtn">I&rsquo;m fine</button>
+            <p class="fall-countdown" id="fallCountdown">If there&rsquo;s no answer, Priya will be told.</p>
+          </div>
+          <div class="fall-inner" id="fallOutcome" hidden>
+            <p class="fall-title" id="fallOutcomeText">Glad you&rsquo;re OK.</p>
+            <p class="fall-outcome-link" id="fallFeedWrap" hidden><a href="/splatdiff/family/">See the family feed</a></p>
+            <button type="button" class="btn fall-back-btn" id="fallBackBtn">Back to view</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="lens-controls" aria-label="Glasses controls">
+        <fieldset class="control-group">
+          <legend class="field-label">Source</legend>
+          <div class="radio-row">
+            <label class="radio-choice">
+              <input type="radio" name="glasses-source" id="sourceSample" value="sample" checked>
+              <span>Sample walkthrough</span>
+            </label>
+            <label class="radio-choice">
+              <input type="radio" name="glasses-source" id="sourceCamera" value="camera">
+              <span>This camera</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="control-group">
+          <label class="field-label" for="watchlistInput">Watchlist</label>
+          <p class="field-help">Things the glasses quietly look for. Each frame is checked once and thrown away.</p>
+          <div class="watchlist-box">
+            <ul class="watchlist-chips" id="watchlistChips"></ul>
+            <div class="watchlist-add">
+              <input type="text" class="text-input watchlist-input" id="watchlistInput" placeholder="Add something, e.g. walking stick" autocomplete="off">
+              <button type="button" class="btn" id="watchlistAddBtn">Add</button>
+            </div>
+            <div class="suggested-row">
+              <span class="suggested-label" id="suggestedLabel">Suggested:</span>
+              <div class="suggested-chips" role="group" aria-labelledby="suggestedLabel">
+                <button type="button" class="suggested-chip" data-suggested="keys">keys</button>
+                <button type="button" class="suggested-chip" data-suggested="glasses case">glasses case</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-actions">
+          <button type="button" class="btn btn-primary" id="playBtn" aria-pressed="false">Start</button>
+          <button type="button" class="btn btn-stop" id="fallBtn">Simulate a fall alert (from a watch, pendant or the glasses)</button>
+        </div>
+        <p class="glasses-status" id="glassesStatus" aria-live="polite"></p>
+      </section>
+    </div>
+
+    <div class="glasses-side">
+      <section class="memory-panel" aria-labelledby="memory-heading">
+        <h2 id="memory-heading" class="memory-title">Where did I leave it?</h2>
+        <ul class="memory-list" id="memoryList"></ul>
+        <div class="memory-ask">
+          <label class="field-label" for="askInput">Ask: where is my&hellip;</label>
+          <div class="memory-ask-row">
+            <input type="text" class="text-input memory-ask-input" id="askInput" placeholder="walker" autocomplete="off">
+            <button type="button" class="btn" id="askBtn">Ask: where is my&hellip;</button>
+          </div>
+        </div>
+      </section>
+      <p class="memory-note">This memory lives only in the glasses session and is forgotten when you close it.</p>
+
+      <aside class="privacy-panel" aria-labelledby="glasses-privacy-heading">
+        <h2 id="glasses-privacy-heading" class="privacy-title">Private by design</h2>
+        <p>He wears it, he owns it &mdash; nobody films him.</p>
+        <p>Each frame is looked at once and thrown away; nothing is stored.</p>
+        <p>Only words reach the family feed.</p>
+      </aside>
+    </div>
+  </div>
+</main>
+
+<footer class="glasses-footer">
+  <p>Second Look &middot; <a href="/splatdiff/">Home</a> &middot; <a href="/splatdiff/family/">Family feed</a> &middot; <a href="/splatdiff/app/">Check a room</a></p>
+  <p class="glasses-footer-note">Not a medical device &mdash; it reports room changes, not health.</p>
+</footer>
+
+<script src="/splatdiff/web/glasses.js"></script>
+</body>
+</html>

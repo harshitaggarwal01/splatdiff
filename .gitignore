@@ -1,8 +1,8 @@
 .env
 __pycache__/
 *.pyc
-cache/
-outputs/
+/cache/
+/outputs/
 .venv/
 data/*.mp4
 data/*.mov
@@ -14,3 +14,5 @@ data/baselines/
 data/**/*.mp4
 data/**/*.mov
 data/**/*.webm
+!docs/
+!docs/**

@@ -1,0 +1,1278 @@
+{
+  "run_id": "20261104_182731",
+  "before": "data/sample_before.mp4",
+  "after": "data/sample_after.mp4",
+  "normalized_before": "cache\\normalized\\2cb78c8bd945295c0cf0a35ac81baee2e1c8e13b1f4857012fd62da4b4840c21.mp4",
+  "normalized_after": "cache\\normalized\\d24ba24c435b39df7f81c3f940c82c920f39052a989f78df223514d675e0e193.mp4",
+  "objects": [
+    {
+      "concept": "walker",
+      "where_before": "center in front of sofa",
+      "where_after": "left-center in front of sofa",
+      "suspected_change": "unchanged"
+    },
+    {
+      "concept": "armchair",
+      "where_before": "left foreground",
+      "where_after": "left foreground",
+      "suspected_change": "unchanged"
+    },
+    {
+      "concept": "backpack",
+      "where_before": "on floor by coffee table",
+      "where_after": "not visible",
+      "suspected_change": "removed"
+    },
+    {
+      "concept": "suitcase",
+      "where_before": "not visible",
+      "where_after": "right beside sofa by window",
+      "suspected_change": "added"
+    },
+    {
+      "concept": "mug",
+      "where_before": "on coffee table",
+      "where_after": "on coffee table",
+      "suspected_change": "unchanged"
+    },
+    {
+      "concept": "floor lamp",
+      "where_before": "right rear corner behind sofa",
+      "where_after": "left rear behind armchair",
+      "suspected_change": "unchanged"
+    },
+    {
+      "concept": "throw blanket",
+      "where_before": "draped on right side of sofa",
+      "where_after": "draped on right side of sofa",
+      "suspected_change": "unchanged"
+    },
+    {
+      "concept": "cushion",
+      "where_before": "on left seat of sofa",
+      "where_after": "on left seat of sofa",
+      "suspected_change": "unchanged"
+    },
+    {
+      "concept": "coffee table",
+      "where_before": "center-right in front of sofa",
+      "where_after": "center-right in front of sofa",
+      "suspected_change": "unchanged"
+    },
+    {
+      "concept": "potted plant",
+      "where_before": "right by window",
+      "where_after": "right by window",
+      "suspected_change": "unchanged"
+    },
+    {
+      "concept": "glasses",
+      "where_before": "on coffee table on magazine",
+      "where_after": "on coffee table on magazine",
+      "suspected_change": "unchanged"
+    },
+    {
+      "concept": "coaster",
+      "where_before": "on coffee table",
+      "where_after": "on coffee table",
+      "suspected_change": "unchanged"
+    }
+  ],
+  "concepts": [
+    "walker",
+    "armchair",
+    "backpack",
+    "suitcase",
+    "mug",
+    "floor lamp",
+    "throw blanket",
+    "cushion",
+    "coffee table",
+    "potted plant",
+    "glasses",
+    "coaster"
+  ],
+  "summaries": {
+    "armchair": {
+      "concept": "armchair",
+      "before": {
+        "frames_detected": 0,
+        "max_instances": 0,
+        "mean_conf": 0.0,
+        "best_frame": null,
+        "best_box": null,
+        "best_conf": 0.0,
+        "present": false
+      },
+      "after": {
+        "frames_detected": 31,
+        "max_instances": 1,
+        "mean_conf": 0.7460317611694336,
+        "best_frame": 8,
+        "best_box": [
+          0,
+          126,
+          301,
+          359
+        ],
+        "best_conf": 0.7460317611694336,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "added",
+      "recheck": {
+        "checked": true,
+        "found": true,
+        "video": "before",
+        "keyframe_index": 1,
+        "box": [
+          0,
+          126,
+          309,
+          359
+        ],
+        "c": 0.7500000596046448
+      },
+      "count_changed": true
+    },
+    "backpack": {
+      "concept": "backpack",
+      "before": {
+        "frames_detected": 40,
+        "max_instances": 1,
+        "mean_conf": 0.8904109597206116,
+        "best_frame": 10,
+        "best_box": [
+          383,
+          254,
+          585,
+          359
+        ],
+        "best_conf": 0.8904109597206116,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 0,
+        "max_instances": 0,
+        "mean_conf": 0.0,
+        "best_frame": null,
+        "best_box": null,
+        "best_conf": 0.0,
+        "present": false
+      },
+      "label": "removed",
+      "original_label": "removed",
+      "recheck": {
+        "checked": true,
+        "found": false,
+        "video": "after",
+        "keyframe_index": null,
+        "box": null,
+        "c": 0.0,
+        "keyframes_checked": 6
+      },
+      "count_changed": true
+    },
+    "coaster": {
+      "concept": "coaster",
+      "before": {
+        "frames_detected": 22,
+        "max_instances": 1,
+        "mean_conf": 0.827957034111023,
+        "best_frame": 30,
+        "best_box": [
+          496,
+          268,
+          545,
+          278
+        ],
+        "best_conf": 0.827957034111023,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 22,
+        "max_instances": 1,
+        "mean_conf": 0.8476190567016602,
+        "best_frame": 22,
+        "best_box": [
+          574,
+          264,
+          623,
+          274
+        ],
+        "best_conf": 0.8476190567016602,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": false
+    },
+    "coffee table": {
+      "concept": "coffee table",
+      "before": {
+        "frames_detected": 39,
+        "max_instances": 1,
+        "mean_conf": 0.7770034670829773,
+        "best_frame": 27,
+        "best_box": [
+          338,
+          262,
+          639,
+          359
+        ],
+        "best_conf": 0.7770034670829773,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 39,
+        "max_instances": 1,
+        "mean_conf": 0.7815700173377991,
+        "best_frame": 25,
+        "best_box": [
+          350,
+          243,
+          639,
+          359
+        ],
+        "best_conf": 0.7815700173377991,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": false
+    },
+    "cushion": {
+      "concept": "cushion",
+      "before": {
+        "frames_detected": 40,
+        "max_instances": 8,
+        "mean_conf": 0.8547818393331684,
+        "best_frame": 15,
+        "best_box": [
+          310,
+          146,
+          452,
+          222
+        ],
+        "best_conf": 0.9298245906829834,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 40,
+        "max_instances": 8,
+        "mean_conf": 0.8474307186799507,
+        "best_frame": 11,
+        "best_box": [
+          353,
+          143,
+          494,
+          219
+        ],
+        "best_conf": 0.9259259104728699,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": false
+    },
+    "floor lamp": {
+      "concept": "floor lamp",
+      "before": {
+        "frames_detected": 23,
+        "max_instances": 1,
+        "mean_conf": 0.7928802371025085,
+        "best_frame": 26,
+        "best_box": [
+          516,
+          0,
+          639,
+          175
+        ],
+        "best_conf": 0.7928802371025085,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 23,
+        "max_instances": 1,
+        "mean_conf": 0.7887788414955139,
+        "best_frame": 0,
+        "best_box": [
+          55,
+          0,
+          219,
+          216
+        ],
+        "best_conf": 0.7887788414955139,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": false
+    },
+    "glasses": {
+      "concept": "glasses",
+      "before": {
+        "frames_detected": 20,
+        "max_instances": 1,
+        "mean_conf": 0.8358974456787109,
+        "best_frame": 27,
+        "best_box": [
+          545,
+          247,
+          607,
+          260
+        ],
+        "best_conf": 0.8358974456787109,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 21,
+        "max_instances": 1,
+        "mean_conf": 0.7928802371025085,
+        "best_frame": 24,
+        "best_box": [
+          573,
+          244,
+          635,
+          257
+        ],
+        "best_conf": 0.7928802371025085,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": false
+    },
+    "mug": {
+      "concept": "mug",
+      "before": {
+        "frames_detected": 34,
+        "max_instances": 1,
+        "mean_conf": 0.7264957427978516,
+        "best_frame": 13,
+        "best_box": [
+          558,
+          235,
+          633,
+          269
+        ],
+        "best_conf": 0.7264957427978516,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 33,
+        "max_instances": 1,
+        "mean_conf": 0.7815700173377991,
+        "best_frame": 20,
+        "best_box": [
+          487,
+          239,
+          561,
+          272
+        ],
+        "best_conf": 0.7815700173377991,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": false
+    },
+    "potted plant": {
+      "concept": "potted plant",
+      "before": {
+        "frames_detected": 13,
+        "max_instances": 1,
+        "mean_conf": 0.7299578189849854,
+        "best_frame": 39,
+        "best_box": [
+          503,
+          102,
+          639,
+          256
+        ],
+        "best_conf": 0.7299578189849854,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 10,
+        "max_instances": 1,
+        "mean_conf": 0.7037037014961243,
+        "best_frame": 39,
+        "best_box": [
+          501,
+          101,
+          639,
+          198
+        ],
+        "best_conf": 0.7037037014961243,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": false
+    },
+    "suitcase": {
+      "concept": "suitcase",
+      "before": {
+        "frames_detected": 0,
+        "max_instances": 0,
+        "mean_conf": 0.0,
+        "best_frame": null,
+        "best_box": null,
+        "best_conf": 0.0,
+        "present": false
+      },
+      "after": {
+        "frames_detected": 16,
+        "max_instances": 1,
+        "mean_conf": 0.7620818018913269,
+        "best_frame": 39,
+        "best_box": [
+          469,
+          191,
+          631,
+          324
+        ],
+        "best_conf": 0.7620818018913269,
+        "present": true
+      },
+      "label": "added",
+      "original_label": "added",
+      "recheck": {
+        "checked": true,
+        "found": false,
+        "video": "before",
+        "keyframe_index": null,
+        "box": null,
+        "c": 0.0,
+        "keyframes_checked": 6
+      },
+      "count_changed": true
+    },
+    "throw blanket": {
+      "concept": "throw blanket",
+      "before": {
+        "frames_detected": 40,
+        "max_instances": 2,
+        "mean_conf": 0.9046496815151639,
+        "best_frame": 24,
+        "best_box": [
+          308,
+          125,
+          632,
+          246
+        ],
+        "best_conf": 0.9259259104728699,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 40,
+        "max_instances": 1,
+        "mean_conf": 0.9179486632347107,
+        "best_frame": 23,
+        "best_box": [
+          318,
+          125,
+          625,
+          243
+        ],
+        "best_conf": 0.9179486632347107,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": true
+    },
+    "walker": {
+      "concept": "walker",
+      "before": {
+        "frames_detected": 0,
+        "max_instances": 0,
+        "mean_conf": 0.0,
+        "best_frame": null,
+        "best_box": null,
+        "best_conf": 0.0,
+        "present": false
+      },
+      "after": {
+        "frames_detected": 0,
+        "max_instances": 0,
+        "mean_conf": 0.0,
+        "best_frame": null,
+        "best_box": null,
+        "best_conf": 0.0,
+        "present": false
+      },
+      "label": "not_found",
+      "original_label": "not_found",
+      "recheck": null,
+      "count_changed": false
+    }
+  },
+  "diff_table": {
+    "armchair": {
+      "concept": "armchair",
+      "before": {
+        "frames_detected": 0,
+        "max_instances": 0,
+        "mean_conf": 0.0,
+        "best_frame": null,
+        "best_box": null,
+        "best_conf": 0.0,
+        "present": false
+      },
+      "after": {
+        "frames_detected": 31,
+        "max_instances": 1,
+        "mean_conf": 0.7460317611694336,
+        "best_frame": 8,
+        "best_box": [
+          0,
+          126,
+          301,
+          359
+        ],
+        "best_conf": 0.7460317611694336,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "added",
+      "recheck": {
+        "checked": true,
+        "found": true,
+        "video": "before",
+        "keyframe_index": 1,
+        "box": [
+          0,
+          126,
+          309,
+          359
+        ],
+        "c": 0.7500000596046448
+      },
+      "count_changed": true
+    },
+    "backpack": {
+      "concept": "backpack",
+      "before": {
+        "frames_detected": 40,
+        "max_instances": 1,
+        "mean_conf": 0.8904109597206116,
+        "best_frame": 10,
+        "best_box": [
+          383,
+          254,
+          585,
+          359
+        ],
+        "best_conf": 0.8904109597206116,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 0,
+        "max_instances": 0,
+        "mean_conf": 0.0,
+        "best_frame": null,
+        "best_box": null,
+        "best_conf": 0.0,
+        "present": false
+      },
+      "label": "removed",
+      "original_label": "removed",
+      "recheck": {
+        "checked": true,
+        "found": false,
+        "video": "after",
+        "keyframe_index": null,
+        "box": null,
+        "c": 0.0,
+        "keyframes_checked": 6
+      },
+      "count_changed": true
+    },
+    "coaster": {
+      "concept": "coaster",
+      "before": {
+        "frames_detected": 22,
+        "max_instances": 1,
+        "mean_conf": 0.827957034111023,
+        "best_frame": 30,
+        "best_box": [
+          496,
+          268,
+          545,
+          278
+        ],
+        "best_conf": 0.827957034111023,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 22,
+        "max_instances": 1,
+        "mean_conf": 0.8476190567016602,
+        "best_frame": 22,
+        "best_box": [
+          574,
+          264,
+          623,
+          274
+        ],
+        "best_conf": 0.8476190567016602,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": false
+    },
+    "coffee table": {
+      "concept": "coffee table",
+      "before": {
+        "frames_detected": 39,
+        "max_instances": 1,
+        "mean_conf": 0.7770034670829773,
+        "best_frame": 27,
+        "best_box": [
+          338,
+          262,
+          639,
+          359
+        ],
+        "best_conf": 0.7770034670829773,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 39,
+        "max_instances": 1,
+        "mean_conf": 0.7815700173377991,
+        "best_frame": 25,
+        "best_box": [
+          350,
+          243,
+          639,
+          359
+        ],
+        "best_conf": 0.7815700173377991,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": false
+    },
+    "cushion": {
+      "concept": "cushion",
+      "before": {
+        "frames_detected": 40,
+        "max_instances": 8,
+        "mean_conf": 0.8547818393331684,
+        "best_frame": 15,
+        "best_box": [
+          310,
+          146,
+          452,
+          222
+        ],
+        "best_conf": 0.9298245906829834,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 40,
+        "max_instances": 8,
+        "mean_conf": 0.8474307186799507,
+        "best_frame": 11,
+        "best_box": [
+          353,
+          143,
+          494,
+          219
+        ],
+        "best_conf": 0.9259259104728699,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": false
+    },
+    "floor lamp": {
+      "concept": "floor lamp",
+      "before": {
+        "frames_detected": 23,
+        "max_instances": 1,
+        "mean_conf": 0.7928802371025085,
+        "best_frame": 26,
+        "best_box": [
+          516,
+          0,
+          639,
+          175
+        ],
+        "best_conf": 0.7928802371025085,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 23,
+        "max_instances": 1,
+        "mean_conf": 0.7887788414955139,
+        "best_frame": 0,
+        "best_box": [
+          55,
+          0,
+          219,
+          216
+        ],
+        "best_conf": 0.7887788414955139,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": false
+    },
+    "glasses": {
+      "concept": "glasses",
+      "before": {
+        "frames_detected": 20,
+        "max_instances": 1,
+        "mean_conf": 0.8358974456787109,
+        "best_frame": 27,
+        "best_box": [
+          545,
+          247,
+          607,
+          260
+        ],
+        "best_conf": 0.8358974456787109,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 21,
+        "max_instances": 1,
+        "mean_conf": 0.7928802371025085,
+        "best_frame": 24,
+        "best_box": [
+          573,
+          244,
+          635,
+          257
+        ],
+        "best_conf": 0.7928802371025085,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": false
+    },
+    "mug": {
+      "concept": "mug",
+      "before": {
+        "frames_detected": 34,
+        "max_instances": 1,
+        "mean_conf": 0.7264957427978516,
+        "best_frame": 13,
+        "best_box": [
+          558,
+          235,
+          633,
+          269
+        ],
+        "best_conf": 0.7264957427978516,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 33,
+        "max_instances": 1,
+        "mean_conf": 0.7815700173377991,
+        "best_frame": 20,
+        "best_box": [
+          487,
+          239,
+          561,
+          272
+        ],
+        "best_conf": 0.7815700173377991,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": false
+    },
+    "potted plant": {
+      "concept": "potted plant",
+      "before": {
+        "frames_detected": 13,
+        "max_instances": 1,
+        "mean_conf": 0.7299578189849854,
+        "best_frame": 39,
+        "best_box": [
+          503,
+          102,
+          639,
+          256
+        ],
+        "best_conf": 0.7299578189849854,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 10,
+        "max_instances": 1,
+        "mean_conf": 0.7037037014961243,
+        "best_frame": 39,
+        "best_box": [
+          501,
+          101,
+          639,
+          198
+        ],
+        "best_conf": 0.7037037014961243,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": false
+    },
+    "suitcase": {
+      "concept": "suitcase",
+      "before": {
+        "frames_detected": 0,
+        "max_instances": 0,
+        "mean_conf": 0.0,
+        "best_frame": null,
+        "best_box": null,
+        "best_conf": 0.0,
+        "present": false
+      },
+      "after": {
+        "frames_detected": 16,
+        "max_instances": 1,
+        "mean_conf": 0.7620818018913269,
+        "best_frame": 39,
+        "best_box": [
+          469,
+          191,
+          631,
+          324
+        ],
+        "best_conf": 0.7620818018913269,
+        "present": true
+      },
+      "label": "added",
+      "original_label": "added",
+      "recheck": {
+        "checked": true,
+        "found": false,
+        "video": "before",
+        "keyframe_index": null,
+        "box": null,
+        "c": 0.0,
+        "keyframes_checked": 6
+      },
+      "count_changed": true
+    },
+    "throw blanket": {
+      "concept": "throw blanket",
+      "before": {
+        "frames_detected": 40,
+        "max_instances": 2,
+        "mean_conf": 0.9046496815151639,
+        "best_frame": 24,
+        "best_box": [
+          308,
+          125,
+          632,
+          246
+        ],
+        "best_conf": 0.9259259104728699,
+        "present": true
+      },
+      "after": {
+        "frames_detected": 40,
+        "max_instances": 1,
+        "mean_conf": 0.9179486632347107,
+        "best_frame": 23,
+        "best_box": [
+          318,
+          125,
+          625,
+          243
+        ],
+        "best_conf": 0.9179486632347107,
+        "present": true
+      },
+      "label": "present_both",
+      "original_label": "present_both",
+      "recheck": null,
+      "count_changed": true
+    },
+    "walker": {
+      "concept": "walker",
+      "before": {
+        "frames_detected": 0,
+        "max_instances": 0,
+        "mean_conf": 0.0,
+        "best_frame": null,
+        "best_box": null,
+        "best_conf": 0.0,
+        "present": false
+      },
+      "after": {
+        "frames_detected": 0,
+        "max_instances": 0,
+        "mean_conf": 0.0,
+        "best_frame": null,
+        "best_box": null,
+        "best_conf": 0.0,
+        "present": false
+      },
+      "label": "not_found",
+      "original_label": "not_found",
+      "recheck": null,
+      "count_changed": false
+    }
+  },
+  "moved_verdicts": {
+    "armchair": {
+      "moved": false,
+      "confidence": 0.92,
+      "reason": "armchair keeps same position relative to sofa arm and walker"
+    },
+    "coaster": {
+      "moved": false,
+      "confidence": 0.85,
+      "reason": "same spot right of mug on table, viewpoint shift only"
+    },
+    "coffee table": {
+      "moved": false,
+      "confidence": 0.92,
+      "reason": "same position in front of sofa, only backpack removed"
+    },
+    "cushion": {
+      "moved": false,
+      "confidence": 0.95,
+      "reason": "cushion keeps same position and orientation on sofa relative to arm and throw"
+    },
+    "floor lamp": {
+      "moved": true,
+      "confidence": 0.92,
+      "reason": "lamp was behind right end of gray sofa, now behind beige armchair on opposite left end"
+    },
+    "glasses": {
+      "moved": false,
+      "confidence": 0.9,
+      "reason": "glasses remain on newspaper at same table corner relative to mug and coaster"
+    },
+    "mug": {
+      "moved": false,
+      "confidence": 0.88,
+      "reason": "same spot on left edge of coffee table in front of gray couch"
+    },
+    "potted plant": {
+      "moved": false,
+      "confidence": 0.85,
+      "reason": "same spot by sofa arm/window, now partly occluded by red suitcase"
+    },
+    "throw blanket": {
+      "moved": false,
+      "confidence": 0.92,
+      "reason": "identical drape over sofa back relative to pillow and arm"
+    }
+  },
+  "summary": "Room shows two additions, one removal, and one relocation: an armchair and suitcase appeared, the backpack was removed, and the floor lamp moved to the opposite end of the seating area.",
+  "raw_claims": [
+    {
+      "concept": "armchair",
+      "change": "added",
+      "explanation": "Not present before (0 frames) and detected after in 31 frames with best box [0, 126, 301, 359] at conf 0.75.",
+      "safety_note": "New chair changes seating layout and walk path; verify clearance for caregiver access."
+    },
+    {
+      "concept": "backpack",
+      "change": "removed",
+      "explanation": "Present before in 40 frames with best box [383, 254, 585, 359] at conf 0.89, absent after (0 frames).",
+      "safety_note": "Removal clears floor in front of coffee table, reducing trip hazard."
+    },
+    {
+      "concept": "floor lamp",
+      "change": "moved",
+      "explanation": "Present both sides but position changed from [516, 0, 639, 175] behind right end of sofa to [55, 0, 219, 216] behind opposite end, per moved verdict confidence 0.92.",
+      "safety_note": "Relocated lamp may involve moved cord/base; check stability and cord trip risk."
+    },
+    {
+      "concept": "suitcase",
+      "change": "added",
+      "explanation": "Not present before (0 frames) and detected after in 16 frames with best box [469, 191, 631, 324] at conf 0.76, partly occluding potted plant area.",
+      "safety_note": "Suitcase by sofa/window is a trip and egress obstruction; store out of walkway."
+    }
+  ],
+  "claims": [
+    {
+      "concept": "backpack",
+      "change": "removed",
+      "explanation": "Present before in 40 frames with best box [383, 254, 585, 359] at conf 0.89, absent after (0 frames).",
+      "safety_note": "Removal clears floor in front of coffee table, reducing trip hazard.",
+      "source": "spark",
+      "evidence": {
+        "concept": "backpack",
+        "label": "removed",
+        "original_label": "removed",
+        "recheck": {
+          "checked": true,
+          "found": false,
+          "video": "after",
+          "keyframe_index": null,
+          "box": null,
+          "c": 0.0,
+          "keyframes_checked": 6
+        },
+        "frames_before": 40,
+        "frames_after": 0,
+        "best_box_before": [
+          383,
+          254,
+          585,
+          359
+        ],
+        "best_box_after": null,
+        "best_frame_before": 10,
+        "best_frame_after": null,
+        "confidence_before": 0.8904109597206116,
+        "confidence_after": 0.0,
+        "mean_conf_before": 0.8904109597206116,
+        "mean_conf_after": 0.0,
+        "max_instances_before": 1,
+        "max_instances_after": 0
+      }
+    },
+    {
+      "concept": "floor lamp",
+      "change": "moved",
+      "explanation": "Present both sides but position changed from [516, 0, 639, 175] behind right end of sofa to [55, 0, 219, 216] behind opposite end, per moved verdict confidence 0.92.",
+      "safety_note": "Relocated lamp may involve moved cord/base; check stability and cord trip risk.",
+      "source": "spark",
+      "evidence": {
+        "concept": "floor lamp",
+        "label": "present_both",
+        "original_label": "present_both",
+        "recheck": null,
+        "frames_before": 23,
+        "frames_after": 23,
+        "best_box_before": [
+          516,
+          0,
+          639,
+          175
+        ],
+        "best_box_after": [
+          55,
+          0,
+          219,
+          216
+        ],
+        "best_frame_before": 26,
+        "best_frame_after": 0,
+        "confidence_before": 0.7928802371025085,
+        "confidence_after": 0.7887788414955139,
+        "mean_conf_before": 0.7928802371025085,
+        "mean_conf_after": 0.7887788414955139,
+        "max_instances_before": 1,
+        "max_instances_after": 1
+      }
+    },
+    {
+      "concept": "suitcase",
+      "change": "added",
+      "explanation": "Not present before (0 frames) and detected after in 16 frames with best box [469, 191, 631, 324] at conf 0.76, partly occluding potted plant area.",
+      "safety_note": "Suitcase by sofa/window is a trip and egress obstruction; store out of walkway.",
+      "source": "spark",
+      "evidence": {
+        "concept": "suitcase",
+        "label": "added",
+        "original_label": "added",
+        "recheck": {
+          "checked": true,
+          "found": false,
+          "video": "before",
+          "keyframe_index": null,
+          "box": null,
+          "c": 0.0,
+          "keyframes_checked": 6
+        },
+        "frames_before": 0,
+        "frames_after": 16,
+        "best_box_before": null,
+        "best_box_after": [
+          469,
+          191,
+          631,
+          324
+        ],
+        "best_frame_before": null,
+        "best_frame_after": 39,
+        "confidence_before": 0.0,
+        "confidence_after": 0.7620818018913269,
+        "mean_conf_before": 0.0,
+        "mean_conf_after": 0.7620818018913269,
+        "max_instances_before": 0,
+        "max_instances_after": 1
+      }
+    }
+  ],
+  "kept_claims": [
+    {
+      "concept": "backpack",
+      "change": "removed",
+      "explanation": "Present before in 40 frames with best box [383, 254, 585, 359] at conf 0.89, absent after (0 frames).",
+      "safety_note": "Removal clears floor in front of coffee table, reducing trip hazard.",
+      "source": "spark",
+      "evidence": {
+        "concept": "backpack",
+        "label": "removed",
+        "original_label": "removed",
+        "recheck": {
+          "checked": true,
+          "found": false,
+          "video": "after",
+          "keyframe_index": null,
+          "box": null,
+          "c": 0.0,
+          "keyframes_checked": 6
+        },
+        "frames_before": 40,
+        "frames_after": 0,
+        "best_box_before": [
+          383,
+          254,
+          585,
+          359
+        ],
+        "best_box_after": null,
+        "best_frame_before": 10,
+        "best_frame_after": null,
+        "confidence_before": 0.8904109597206116,
+        "confidence_after": 0.0,
+        "mean_conf_before": 0.8904109597206116,
+        "mean_conf_after": 0.0,
+        "max_instances_before": 1,
+        "max_instances_after": 0
+      }
+    },
+    {
+      "concept": "floor lamp",
+      "change": "moved",
+      "explanation": "Present both sides but position changed from [516, 0, 639, 175] behind right end of sofa to [55, 0, 219, 216] behind opposite end, per moved verdict confidence 0.92.",
+      "safety_note": "Relocated lamp may involve moved cord/base; check stability and cord trip risk.",
+      "source": "spark",
+      "evidence": {
+        "concept": "floor lamp",
+        "label": "present_both",
+        "original_label": "present_both",
+        "recheck": null,
+        "frames_before": 23,
+        "frames_after": 23,
+        "best_box_before": [
+          516,
+          0,
+          639,
+          175
+        ],
+        "best_box_after": [
+          55,
+          0,
+          219,
+          216
+        ],
+        "best_frame_before": 26,
+        "best_frame_after": 0,
+        "confidence_before": 0.7928802371025085,
+        "confidence_after": 0.7887788414955139,
+        "mean_conf_before": 0.7928802371025085,
+        "mean_conf_after": 0.7887788414955139,
+        "max_instances_before": 1,
+        "max_instances_after": 1
+      }
+    },
+    {
+      "concept": "suitcase",
+      "change": "added",
+      "explanation": "Not present before (0 frames) and detected after in 16 frames with best box [469, 191, 631, 324] at conf 0.76, partly occluding potted plant area.",
+      "safety_note": "Suitcase by sofa/window is a trip and egress obstruction; store out of walkway.",
+      "source": "spark",
+      "evidence": {
+        "concept": "suitcase",
+        "label": "added",
+        "original_label": "added",
+        "recheck": {
+          "checked": true,
+          "found": false,
+          "video": "before",
+          "keyframe_index": null,
+          "box": null,
+          "c": 0.0,
+          "keyframes_checked": 6
+        },
+        "frames_before": 0,
+        "frames_after": 16,
+        "best_box_before": null,
+        "best_box_after": [
+          469,
+          191,
+          631,
+          324
+        ],
+        "best_frame_before": null,
+        "best_frame_after": 39,
+        "confidence_before": 0.0,
+        "confidence_after": 0.7620818018913269,
+        "mean_conf_before": 0.0,
+        "mean_conf_after": 0.7620818018913269,
+        "max_instances_before": 0,
+        "max_instances_after": 1
+      }
+    }
+  ],
+  "dropped": [
+    {
+      "concept": "armchair",
+      "change": "added",
+      "explanation": "Not present before (0 frames) and detected after in 31 frames with best box [0, 126, 301, 359] at conf 0.75.",
+      "safety_note": "New chair changes seating layout and walk path; verify clearance for caregiver access.",
+      "reason": "SAM image re-check found 'armchair' in BEFORE keyframe 1 (c=0.75) - not added"
+    }
+  ],
+  "annotated_images": [
+    "outputs\\20261104_182731\\before_armchair.jpg",
+    "outputs\\20261104_182731\\after_armchair.jpg",
+    "outputs\\20261104_182731\\before_backpack.jpg",
+    "outputs\\20261104_182731\\before_coaster.jpg",
+    "outputs\\20261104_182731\\after_coaster.jpg",
+    "outputs\\20261104_182731\\before_coffee_table.jpg",
+    "outputs\\20261104_182731\\after_coffee_table.jpg",
+    "outputs\\20261104_182731\\before_cushion.jpg",
+    "outputs\\20261104_182731\\after_cushion.jpg",
+    "outputs\\20261104_182731\\before_floor_lamp.jpg",
+    "outputs\\20261104_182731\\after_floor_lamp.jpg",
+    "outputs\\20261104_182731\\before_glasses.jpg",
+    "outputs\\20261104_182731\\after_glasses.jpg",
+    "outputs\\20261104_182731\\before_mug.jpg",
+    "outputs\\20261104_182731\\after_mug.jpg",
+    "outputs\\20261104_182731\\before_potted_plant.jpg",
+    "outputs\\20261104_182731\\after_potted_plant.jpg",
+    "outputs\\20261104_182731\\after_suitcase.jpg",
+    "outputs\\20261104_182731\\before_throw_blanket.jpg",
+    "outputs\\20261104_182731\\after_throw_blanket.jpg"
+  ],
+  "latency_s": 56.312,
+  "cost_usd": 0.3312
+}

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script>window.SL_STATIC=true;window.SL_BASE="/splatdiff";</script><script src="/splatdiff/web/static-mode.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Family feed — Second Look</title>
+<meta name="description" content="Words-only updates from Second Look checks of Dad's room. No pictures, no video.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Literata:opsz,wght@7..72,400;7..72,600&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/splatdiff/web/app.css">
+<link rel="stylesheet" href="/splatdiff/web/family.css">
+</head>
+<body>
+<div class="sheet family-sheet">
+
+  <header class="masthead family-masthead">
+    <div class="masthead-top">
+      <div class="wordmark-block">
+        <a class="wordmark family-wordmark" href="/splatdiff/">Second Look</a>
+        <span class="wordmark-sub" aria-current="page">Family feed</span>
+      </div>
+      <div class="masthead-right family-masthead-right">
+        <span id="live-indicator" class="mono live-indicator" role="status" aria-live="polite">reconnecting…</span>
+        <a class="btn btn-primary" href="/splatdiff/app/">Check a room</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="family-main">
+    <h1 class="family-title">How is Dad's room?</h1>
+    <p class="family-intro">This page shows words, never pictures: each check's result, as soon as it finishes. The videos stay where they were filmed and are deleted after the check unless someone chose to keep them.</p>
+
+    <div class="family-actions notify-line">
+      <button id="notify-btn" class="btn notify-btn" type="button">Notify me on this device</button>
+      <p id="notify-note" class="notify-note" role="status" aria-live="polite"></p>
+    </div>
+
+    <section class="family-section agent-section" aria-labelledby="ask-heading">
+      <h2 id="ask-heading" class="section-title family-section-title">Ask about Dad's room</h2>
+      <form id="ask-form" class="ask-form">
+        <label class="visually-hidden" for="ask-input">Ask about Dad's room</label>
+        <input id="ask-input" class="ask-input" type="text" name="question" placeholder="Where was his walker last seen?" autocomplete="off">
+        <button id="ask-submit" class="btn btn-primary" type="submit">Ask</button>
+      </form>
+      <div class="ask-chips" aria-label="Suggested questions">
+        <button class="chip" type="button" data-question="What changed since the last visit?">What changed since the last visit?</button>
+        <button class="chip" type="button" data-question="Is anything on the floor?">Is anything on the floor?</button>
+        <button class="chip" type="button" data-question="Who filmed last, and when?">Who filmed last, and when?</button>
+      </div>
+      <p class="agent-quiet-note">The agent reads the words on this page — never the pictures.</p>
+      <p id="ask-status" class="ask-status" role="status" aria-live="polite"></p>
+      <p id="ask-error" class="ask-error" role="alert" hidden></p>
+      <div id="ask-answer-wrap" class="ask-answer-wrap" aria-live="polite" aria-atomic="true" hidden>
+        <p id="ask-answer" class="ask-answer"></p>
+        <p id="ask-sources" class="ask-sources" hidden></p>
+      </div>
+    </section>
+
+    <section class="family-section agent-section" aria-labelledby="update-heading">
+      <h2 id="update-heading" class="section-title family-section-title">Write an update for</h2>
+      <form id="update-form" class="update-form">
+        <fieldset class="segmented-fieldset">
+          <legend class="visually-hidden">Write an update for</legend>
+          <div class="segmented" role="radiogroup" aria-label="Write an update for">
+            <label class="segment">
+              <input type="radio" name="update-for" value="nearby" checked>
+              <span>Someone nearby</span>
+            </label>
+            <label class="segment">
+              <input type="radio" name="update-for" value="far_away">
+              <span>Someone far away</span>
+            </label>
+            <label class="segment">
+              <input type="radio" name="update-for" value="dad">
+              <span>Dad</span>
+            </label>
+          </div>
+        </fieldset>
+        <p id="update-dad-help" class="update-dad-help" hidden>Written to him, not about him.</p>
+        <div class="update-controls">
+          <div class="update-name-field">
+            <label for="update-name">Name <span class="family-muted">(optional)</span></label>
+            <input id="update-name" class="update-name" type="text" name="name" placeholder="Their name" autocomplete="name">
+          </div>
+          <button id="update-submit" class="btn btn-primary" type="submit">Write it</button>
+        </div>
+      </form>
+      <p id="update-status" class="update-status" role="status" aria-live="polite"></p>
+      <p id="update-error" class="ask-error" role="alert" hidden></p>
+      <div id="update-result-wrap" class="update-result-wrap" aria-live="polite" aria-atomic="true" hidden>
+        <blockquote class="update-quote">
+          <p id="update-text" class="update-text"></p>
+        </blockquote>
+        <div class="update-result-actions">
+          <button id="update-copy" class="btn" type="button">Copy</button>
+          <button id="update-send" class="btn" type="button">Send</button>
+          <span id="update-copy-note" class="notify-note" role="status" aria-live="polite"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="family-section" aria-labelledby="rooms-heading">
+      <h2 id="rooms-heading" class="section-title family-section-title">Rooms</h2>
+      <div id="room-list" class="room-list">
+        <p id="room-empty" class="family-muted">No rooms checked yet.</p>
+      </div>
+    </section>
+
+    <section class="family-section" aria-labelledby="latest-heading">
+      <h2 id="latest-heading" class="section-title family-section-title">Latest checks</h2>
+      <p id="feed-empty" class="family-empty">No checks yet. When someone films Dad's room, the result appears here — as words, within a minute.</p>
+      <ol id="feed-list" class="feed-list" aria-live="polite" aria-label="Latest checks"></ol>
+    </section>
+  </main>
+
+  <footer class="colophon family-colophon">
+    <p>Second Look compares two short walkthroughs and reports only what its detections support. This feed carries the words from each check — no images, no video, and no transcripts are shown here.</p>
+  </footer>
+
+</div>
+<script src="/splatdiff/web/family.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script>window.SL_STATIC=true;window.SL_BASE="/splatdiff";</script><script src="/splatdiff/web/static-mode.js"></script><script src="/splatdiff/web/browser-pipeline.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Second Look compares two room walkthroughs and reports what changed, with evidence for every finding.">
+  <title>Second Look — Room check</title>
+  <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/splatdiff/web/app.css">
+  <style>
+    /* Slim top bar: the wordmark is the way back to the product page. */
+    .masthead-top .wordmark { color: inherit; text-decoration: none; }
+    .masthead-top .wordmark:hover { text-decoration: underline; text-underline-offset: 4px; }
+    .masthead-top .wordmark:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 2px; }
+    /* "Needs attention" banner: calm brick-ink panel, moss line when all is well. */
+    .attention-title { margin: 0 0 0.5rem; font-size: 1.05rem; }
+    .attention-calm { margin: 0; }
+    .attention-list { margin: 0; padding-left: 1.2rem; }
+    .attention-list li { margin: 0.3rem 0; }
+    .attention-link { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+    .attention-link:hover, .attention-link:focus-visible { text-decoration-thickness: 2px; }
+    .attention-sorted-list { margin-top: 0.6rem; opacity: 0.75; }
+    .attention-sorted-list li.is-sorted { display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; }
+    .attention-sorted-badge { font-size: 0.78em; letter-spacing: 0.04em; text-transform: uppercase; border: 1px solid currentColor; border-radius: 999px; padding: 0.05rem 0.5rem; }
+    .finding.is-sorted, .watch-row.is-sorted { opacity: 0.72; }
+    .attention-highlight { animation: attention-flash 1.8s ease-out; }
+    @keyframes attention-flash {
+      0%, 55% { background-color: #f3d9a4; box-shadow: 0 0 0 3px #b4552d; border-radius: 8px; }
+      100% { background-color: transparent; box-shadow: 0 0 0 0 transparent; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .attention-highlight { animation: none; outline: 3px solid #b4552d; outline-offset: 2px; }
+    }
+    /* (5) One secondary style for every non-primary button; only "Check the room" is solid green. */
+    .btn { min-height: 2.75rem; border-radius: 10px; }
+    .btn-quiet:not(.record-btn), a.btn-quiet:not(.record-btn) {
+      background: #fffdf6; background: var(--paper, #fffdf6);
+      border: 1px solid #DDD3C2; color: #2b2620; color: var(--ink, #2b2620);
+      border-radius: 10px; min-height: 2.75rem;
+    }
+    .btn-quiet:not(.record-btn):hover, .btn-quiet:not(.record-btn):focus-visible {
+      background: #fffdf6; background: var(--paper, #fffdf6);
+      border-color: #DDD3C2;
+    }
+    .btn-danger-quiet:not(.record-btn) {
+      background: #fffdf6; background: var(--paper, #fffdf6);
+      border: 1px solid #DDD3C2; color: #2b2620; color: var(--ink, #2b2620);
+    }
+    /* (4) "Record with this phone": quiet text link inside the drop zone, not a full-width box. */
+    .dropzone .record-btn {
+      background: none; border: none; box-shadow: none; min-height: 0; height: auto;
+      padding: 0.25rem 0.5rem; margin-top: 0.35rem; border-radius: 4px;
+      color: inherit; font: inherit; font-size: 0.9em; cursor: pointer;
+      text-decoration: underline; text-underline-offset: 3px;
+      display: inline-flex; align-items: center; gap: 0.35rem; align-self: center;
+    }
+    .dropzone .record-btn:hover, .dropzone .record-btn:focus-visible { text-decoration-thickness: 2px; }
+    .dropzone .record-btn:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+    .dropzone .record-btn[disabled] { opacity: 0.6; text-decoration: none; cursor: default; }
+  </style>
+  <script src="/splatdiff/web/app.js" defer></script>
+</head>
+<body>
+  <div class="sheet">
+
+    <header class="masthead">
+      <div class="masthead-top">
+        <div class="wordmark-block">
+          <a class="wordmark" href="/splatdiff/" aria-label="Second Look — back to the product page">Second Look</a>
+          <span class="wordmark-sub">Room check</span>
+        </div>
+        <div class="masthead-right">
+          <time class="today mono" id="todayDate" datetime=""></time>
+          <a class="btn btn-quiet" href="/splatdiff/family/">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Family feed
+          </a>
+          <button type="button" class="btn btn-quiet" id="historyBtn" aria-expanded="false" aria-controls="historyDrawer">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            Past checks
+          </button>
+        </div>
+      </div>
+
+      <div class="history-drawer" id="historyDrawer" hidden>
+        <div class="history-drawer-head">
+          <h2 class="drawer-title">Past checks</h2>
+          <button type="button" class="icon-btn" id="historyClose" aria-label="Close past checks">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>
+          </button>
+        </div>
+        <div id="historyList" class="history-list" aria-live="polite"></div>
+      </div>
+
+      <h1 class="promise">What changed in Dad&rsquo;s room since the last visit?</h1>
+      <p class="promise-sub">Film the room the day it is set up safe — after a hospital stay, a near-miss or a new walker. Next visit, anyone can film it again — a sibling, a neighbour, the aide — and you read the report wherever you are. Second Look shows what drifted, and every finding comes with its evidence or is struck from the report.</p>
+    </header>
+
+    <main>
+      <section class="intake" id="intake" aria-labelledby="intakeTitle">
+        <h2 class="section-title" id="intakeTitle">The visit</h2>
+
+        <p class="field-help">Film the same route both times: start at the door, pan slowly to the bed, then along the path to the bathroom door. Lights on; keep each watchlist item in view for two seconds.</p>
+
+        <div class="intake-fields">
+          <div class="intake-field">
+            <label class="field-label" for="roomInput">Room</label>
+            <input type="text" id="roomInput" class="text-input" list="roomList" value="Bedroom" autocomplete="off" spellcheck="false" aria-describedby="roomHelp">
+            <datalist id="roomList">
+              <option value="Bedroom"></option>
+              <option value="Hallway"></option>
+              <option value="Bathroom"></option>
+              <option value="Kitchen"></option>
+              <option value="Living room"></option>
+            </datalist>
+            <p class="field-help" id="roomHelp">e.g. Bedroom, Hallway, Bathroom</p>
+          </div>
+          <div class="intake-field">
+            <label class="field-label" for="filmedByInput">Filmed by</label>
+            <input type="text" id="filmedByInput" class="text-input" autocomplete="name" spellcheck="false" placeholder="e.g. Maya, the aide" aria-describedby="filmedByHelp">
+            <p class="field-help" id="filmedByHelp">Shown on the family feed, e.g. Maya (aide)</p>
+          </div>
+        </div>
+
+        <div class="baseline-row" id="baselineRow" hidden>
+          <label class="check-row" for="baselineCheck">
+            <input type="checkbox" id="baselineCheck" checked>
+            <span><span id="baselineLabel">Compare with the saved setup</span><span class="baseline-note" id="baselineNote"></span></span>
+          </label>
+        </div>
+
+        <div class="drop-grid">
+          <div class="dropzone-wrap" id="wrapBefore">
+            <div class="dropzone" id="dropBefore" data-side="before" tabindex="0" role="button"
+                 aria-label="Choose the video from the last visit" aria-describedby="dropBeforeHint">
+              <input type="file" id="fileBefore" accept="video/*" class="file-input" tabindex="-1" aria-hidden="true">
+              <div class="dropzone-empty" id="dropBeforeEmpty">
+                <svg class="icon icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                <span class="dropzone-label">Last visit</span>
+                <span class="dropzone-helper">the safe setup, as the OT or nurse left it</span>
+                <span class="dropzone-hint" id="dropBeforeHint">Click or drop a walkthrough video</span>
+                <button type="button" class="btn btn-quiet record-btn" id="recordBtnBefore" aria-expanded="false" aria-controls="recordPanelBefore">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+                  Record with this phone
+                </button>
+              </div>
+              <video class="dropzone-video" id="videoBefore" controls playsinline preload="metadata" hidden></video>
+              <span class="dropzone-file mono" id="fileNameBefore" hidden></span>
+            </div>
+            <div class="record-panel" id="recordPanelBefore" hidden>
+              <div class="record-frame">
+                <video class="record-video" id="camPreviewBefore" autoplay muted playsinline aria-label="Camera preview for the last-visit walkthrough"></video>
+                <p class="record-overlay">Door → bed → bathroom door · lights on</p>
+              </div>
+              <div class="record-controls">
+                <button type="button" class="btn btn-quiet btn-stop" id="camStopBefore">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                  Stop recording
+                </button>
+                <span class="voice-timer mono" id="camTimerBefore" aria-live="polite">0:00</span>
+              </div>
+              <p class="record-status" id="camStatusBefore" role="status" aria-live="polite" hidden></p>
+            </div>
+          </div>
+
+          <div class="dropzone-wrap" id="wrapAfter">
+            <div class="dropzone" id="dropAfter" data-side="after" tabindex="0" role="button"
+                 aria-label="Choose the video from today" aria-describedby="dropAfterHint">
+              <input type="file" id="fileAfter" accept="video/*" class="file-input" tabindex="-1" aria-hidden="true">
+              <div class="dropzone-empty" id="dropAfterEmpty">
+                <svg class="icon icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                <span class="dropzone-label">Today</span>
+                <span class="dropzone-hint" id="dropAfterHint">Click or drop a walkthrough video</span>
+                <button type="button" class="btn btn-quiet record-btn" id="recordBtnAfter" aria-expanded="false" aria-controls="recordPanelAfter">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+                  Record with this phone
+                </button>
+              </div>
+              <video class="dropzone-video" id="videoAfter" controls playsinline preload="metadata" hidden></video>
+              <span class="dropzone-file mono" id="fileNameAfter" hidden></span>
+            </div>
+            <div class="record-panel" id="recordPanelAfter" hidden>
+              <div class="record-frame">
+                <video class="record-video" id="camPreviewAfter" autoplay muted playsinline aria-label="Camera preview for today's walkthrough"></video>
+                <p class="record-overlay">Door → bed → bathroom door · lights on</p>
+              </div>
+              <div class="record-controls">
+                <button type="button" class="btn btn-quiet btn-stop" id="camStopAfter">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                  Stop recording
+                </button>
+                <span class="voice-timer mono" id="camTimerAfter" aria-live="polite">0:00</span>
+              </div>
+              <p class="record-status" id="camStatusAfter" role="status" aria-live="polite" hidden></p>
+            </div>
+          </div>
+        </div>
+
+        <p class="baseline-active-note" id="baselineActiveNote" role="status" hidden></p>
+
+        <p class="pan-note">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r="0.5" fill="currentColor"/></svg>
+          <span>Why a 20-second pan? It sees behind chairs and along the floor. Nothing to install, nothing recording between visits.</span>
+        </p>
+
+        <p class="sample-note" id="sampleNote" hidden>Synthetic test room made with Muse Image, so every result can be scored. Real, cluttered rooms are the next test.</p>
+
+        <div class="care-row">
+          <div class="watchlist-block">
+            <label class="field-label" for="tagInput">Must stay put</label>
+            <p class="field-help">Things that should stay put — his walker, night medicines, the phone.</p>
+            <div class="tag-box" id="tagBox">
+              <span class="tag-list" id="tagList"></span>
+              <input type="text" id="tagInput" class="tag-input" placeholder="Add: his walker, night medicines, the phone"
+                     autocomplete="off" spellcheck="false" aria-label="Add an item that must stay put">
+            </div>
+          </div>
+
+          <div class="voice-block">
+            <span class="field-label" id="voiceLabel">Care notes</span>
+            <p class="field-help">Say what matters and we will add it to the watchlist.</p>
+            <div class="voice-controls" role="group" aria-labelledby="voiceLabel">
+              <button type="button" class="btn btn-quiet" id="voiceBtn">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4"/><path d="M8 23h8"/></svg>
+                <span id="voiceBtnText">Speak your care notes</span>
+              </button>
+              <button type="button" class="btn btn-quiet btn-stop" id="voiceStopBtn" hidden>
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                Stop
+              </button>
+              <span class="voice-timer mono" id="voiceTimer" hidden aria-live="polite">0:00</span>
+            </div>
+            <p class="voice-status" id="voiceStatus" role="status" aria-live="polite" hidden></p>
+            <blockquote class="voice-quote" id="voiceQuote" hidden>
+              <span class="voice-quote-label">Heard:</span>
+              <span class="voice-quote-text" id="voiceQuoteText"></span>
+            </blockquote>
+            <label class="check-row" for="narrationCheck">
+              <input type="checkbox" id="narrationCheck">
+              <span>Also listen to what I said while filming</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="actions" id="actions">
+          <button type="button" class="btn btn-primary" id="runBtn" disabled>
+            Check the room
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+          </button>
+          <button type="button" class="btn btn-quiet" id="sampleBtn">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+            Use the sample room
+          </button>
+          <label class="check-row keep-media-row" for="keepMediaCheck">
+            <input type="checkbox" id="keepMediaCheck">
+            <span>Keep the videos after the check<span class="field-help keep-media-help">Off: the raw videos are deleted as soon as the check is done.</span></span>
+          </label>
+          <p class="consent-note">Film with Dad&rsquo;s knowledge — ideally together. Clips are sent to Meta&rsquo;s model API to find objects.</p>
+          <p class="actions-error" id="runError" role="alert" hidden></p>
+        </div>
+      </section>
+
+      <section class="live" id="liveSection" aria-labelledby="liveTitle" hidden>
+        <h2 class="section-title" id="liveTitle">The check, as it happens</h2>
+        <ol class="stage-list" id="stageList"></ol>
+        <p class="ledger-line mono" id="ledgerLine" aria-live="polite">elapsed 0.0 s · cost $0.00 · models used: —</p>
+        <div class="live-error" id="liveError" hidden>
+          <p class="live-error-text" id="liveErrorText" role="alert"></p>
+          <button type="button" class="btn btn-quiet" id="retryBtn">Try again</button>
+        </div>
+      </section>
+
+      <section class="report" id="reportSection" aria-labelledby="reportSummary" hidden>
+        <div class="attention-banner" id="attentionBanner" role="region" aria-label="Needs attention" hidden></div>
+        <p class="print-header" id="printHeader">Second Look — Room check</p>
+
+        <div class="coverage-panel" id="coveragePanel" role="region" aria-label="Walkthrough coverage" hidden></div>
+        <p class="privacy-line" id="privacyLine" hidden></p>
+
+        <h2 class="report-summary" id="reportSummary"></h2>
+        <p class="report-stats mono" id="reportStats"></p>
+
+        <div class="report-block" id="watchlistBlock" hidden>
+          <h3 class="report-heading">Care watchlist</h3>
+          <div id="watchlistRows"></div>
+        </div>
+
+        <div class="report-block" id="findingsBlock">
+          <h3 class="report-heading">What changed</h3>
+          <p class="report-empty" id="findingsEmpty" hidden>No changes could be proven from the evidence in these two walkthroughs.</p>
+          <div id="findingsList"></div>
+        </div>
+
+        <div class="report-block" id="struckBlock" hidden>
+          <h3 class="report-heading">Struck from the report</h3>
+          <p class="report-note">These were suggested during the check but the SAM&nbsp;3.1 evidence did not support them, so they were removed.</p>
+          <div id="struckList"></div>
+        </div>
+
+        <footer class="report-footer">
+          <div class="footer-ledger" id="footerLedger"></div>
+          <p class="report-disclaimer">Second Look reports changes in the room, not health, and is not a medical device. For a high finding: put things back, tell the family, and ask Dad&rsquo;s OT or nurse if you are unsure.</p>
+          <div class="footer-actions">
+            <button type="button" class="btn btn-quiet" id="printBtn">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              Print for family
+            </button>
+            <button type="button" class="btn btn-quiet" id="copyBtn">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span id="copyBtnText">Copy summary</span>
+            </button>
+            <button type="button" class="btn btn-quiet" id="shareBtn">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+              <span id="shareBtnText">Send to family</span>
+            </button>
+            <a class="btn btn-quiet" id="reminderLink" href="/api/reminder.ics?room=Bedroom&amp;every=14">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              Remind me to re-film
+            </a>
+            <button type="button" class="btn btn-quiet btn-danger-quiet" id="deleteCheckBtn" aria-describedby="deleteCheckStatus">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              <span id="deleteCheckText">Delete this check</span>
+            </button>
+            <span class="delete-status" id="deleteCheckStatus" role="status" aria-live="polite"></span>
+          </div>
+        </footer>
+      </section>
+    </main>
+
+    <footer class="colophon">
+      <p>Every finding above is held to its SAM&nbsp;3.1 evidence. If the evidence is not there, the finding is struck — never guessed.</p>
+    </footer>
+  </div>
+</body>
+</html>
