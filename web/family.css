@@ -63,7 +63,18 @@ a.btn.btn-primary:focus-visible,
 
 .family-intro { color: var(--ink-2); font-size: 1.02rem; margin: 0; max-width: 70ch; }
 
-.family-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 22px; }
+/* Notify: one quiet line in the header area, under the intro. */
+.family-actions,
+.notify-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 14px 0 0;
+  font-size: .92rem;
+  color: var(--ink-2);
+}
+.notify-btn { font-size: .92rem; padding: 6px 12px; }
 .notify-note { color: var(--ink-2); font-size: .92rem; margin: 0; }
 .notify-note:empty { display: none; }
 
@@ -104,14 +115,17 @@ a.btn.btn-primary:focus-visible,
   font: inherit;
   font-size: 1rem;
   color: var(--ink);
-  background: var(--paper, #fff);
-  border: 1px solid var(--rule);
+  background: #FBF8F2;
+  background-color: #FBF8F2;
+  border: 1px solid #DDD3C2;
   border-radius: 6px;
   padding: 10px 12px;
 }
+.ask-input:focus,
 .ask-input:focus-visible,
+.update-name:focus,
 .update-name:focus-visible {
-  outline: 2px solid var(--green, #1F5546);
+  outline: 2px solid #1F5546;
   outline-offset: 2px;
 }
 .ask-form .btn { flex: none; white-space: nowrap; }
@@ -233,8 +247,9 @@ a.btn.btn-primary:focus-visible,
   font: inherit;
   font-size: 1rem;
   color: var(--ink);
-  background: var(--paper, #fff);
-  border: 1px solid var(--rule);
+  background: #FBF8F2;
+  background-color: #FBF8F2;
+  border: 1px solid #DDD3C2;
   border-radius: 6px;
   padding: 10px 12px;
 }
@@ -276,13 +291,14 @@ a.btn.btn-primary:focus-visible,
 .room-main { flex: 1 1 260px; min-width: 0; }
 .room-name { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; margin: 0; }
 .room-meta { color: var(--ink-2); font-size: .92rem; margin: 3px 0 0; }
+.room-meta .status-line { text-transform: capitalize; }
 .room-side { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .room-link { font-size: .92rem; font-weight: 500; white-space: nowrap; }
 .due-note { color: var(--ochre); font-weight: 600; font-size: .92rem; white-space: nowrap; }
 
 /* ---------- Status words ---------- */
 
-.status-line { display: inline-flex; align-items: flex-start; gap: 8px; font-weight: 500; }
+.status-line { display: inline-flex; align-items: flex-start; gap: 8px; font-weight: 500; text-transform: capitalize; }
 .status-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; margin-top: 7px; background: var(--ink-faint); }
 .status-all_clear .status-dot { background: var(--moss); }
 .status-all_clear { color: var(--moss); }
@@ -329,6 +345,20 @@ a.btn.btn-primary:focus-visible,
 .feed-items { margin: 10px 0 0; padding-left: 22px; }
 .feed-items li { padding: 3px 0; max-width: 68ch; }
 .feed-item-concept { font-weight: 600; text-transform: capitalize; }
+.simulation-tag {
+  display: inline-block;
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  font-size: .68rem;
+  font-weight: 500;
+  letter-spacing: .04em;
+  line-height: 1.4;
+  color: var(--ink-2);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 1px 7px;
+  vertical-align: 2px;
+  white-space: nowrap;
+}
 .dad-choice-tag {
   display: inline-block;
   color: var(--moss);
@@ -342,8 +372,15 @@ a.btn.btn-primary:focus-visible,
   white-space: nowrap;
 }
 .feed-item-risk { color: var(--ink-2); font-size: .9rem; }
-.feed-next-step { color: var(--ink); margin: 6px 0 0; max-width: 68ch; }
-.feed-next-step-label { font-weight: 600; }
+/* Next steps sit indented under their item, not as separate bullets. */
+.feed-next-step {
+  color: var(--ink-2);
+  font-size: .95rem;
+  margin: 4px 0 2px 20px;
+  padding-left: 4px;
+  max-width: 64ch;
+}
+.feed-next-step-label { font-weight: 600; color: var(--ink-2); }
 
 .feed-links { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; }
 .feed-links a { font-weight: 500; font-size: .95rem; }
@@ -360,6 +397,7 @@ a.btn.btn-primary:focus-visible,
   .update-controls { align-items: stretch; }
   .update-name-field { flex-basis: 100%; }
   .ask-source-link { white-space: normal; overflow-wrap: break-word; }
+  .feed-next-step { margin-left: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -367,6 +405,6 @@ a.btn.btn-primary:focus-visible,
 }
 
 @media print {
-  .family-actions, .feed-links, .room-link, .agent-section { display: none !important; }
+  .family-actions, .notify-line, .feed-links, .room-link, .agent-section { display: none !important; }
   .family-title { font-size: 20pt; }
 }

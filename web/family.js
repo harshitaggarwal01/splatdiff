@@ -27,6 +27,14 @@
   var notifyNote = document.getElementById("notify-note");
   var baseTitle = document.title;
 
+  /* Ask suggestion chips: with 4+ chips, the walker question leads;
+     with only three, keep the three general chips from the markup. */
+  var suggestionChips = document.querySelectorAll(".chip[data-question]");
+  if (suggestionChips.length >= 4) {
+    suggestionChips[0].setAttribute("data-question", "Where was his walker last seen?");
+    suggestionChips[0].textContent = "Where was his walker last seen?";
+  }
+
   var entriesById = Object.create(null);
   var entryOrder = [];
   var roomsByName = Object.create(null);
@@ -35,6 +43,11 @@
   var fallbackTimer = null;
 
   function text(value) { return value == null ? "" : String(value); }
+
+  function capitalise(value) {
+    var s = text(value);
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+  }
 
   function trendText(value) {
     if (typeof value === "string") return value.trim();
@@ -83,11 +96,39 @@
     }
   }
 
+  /* 'Wed, Nov 4, 7:20 PM' */
+  function formatCheckDate(value) {
+    if (!value) return "";
+    var d = new Date(value);
+    if (isNaN(d.getTime())) return text(value);
+    try {
+      return d.toLocaleString(undefined, {
+        weekday: "short", month: "short", day: "numeric",
+        hour: "numeric", minute: "2-digit"
+      });
+    } catch (e) {
+      return formatDate(value);
+    }
+  }
+
+  function isSimulatedText(value) {
+    return /\(simulated\)/i.test(text(value)) || /glasses\s*\(simulated\)/i.test(text(value));
+  }
+
+  function cleanSimulatedConcept(value) {
+    return text(value).replace(/\s*\(simulated\)\s*/gi, " ").trim();
+  }
+
+  function simulationTag() {
+    var tag = el("span", "simulation-tag mono", "simulation");
+    return tag;
+  }
+
   function statusLine(status) {
     var wrap = el("span", "status-line status-" + (STATUS_WORDS[status] ? status : "unknown"));
     wrap.appendChild(el("span", "status-dot"));
     wrap.setAttribute("aria-hidden", "false");
-    wrap.appendChild(el("span", "", STATUS_WORDS[status] || "Checked"));
+    wrap.appendChild(el("span", "", capitalise(STATUS_WORDS[status] || "Checked")));
     return wrap;
   }
 
@@ -124,9 +165,22 @@
       main.appendChild(el("h3", "room-name", name));
       var meta = el("p", "room-meta");
       var last = room.last_check || null;
-      if (last && last.date) meta.appendChild(document.createTextNode("Last check: " + formatDay(last.date) + " · "));
-      else if (room.baseline && room.baseline.date) meta.appendChild(document.createTextNode("Saved setup: " + formatDay(room.baseline.date) + " · "));
-      else meta.appendChild(document.createTextNode("No check yet · "));
+      var filmedBy = "";
+      if (last) filmedBy = text(last.filmed_by || last.filmedBy || last.filmed_by_name || "");
+      if (!filmedBy) filmedBy = text(room.filmed_by || room.filmedBy || "");
+      if (last && last.date) {
+        meta.appendChild(document.createTextNode("Last check: " + formatCheckDate(last.date)));
+        if (filmedBy) meta.appendChild(document.createTextNode(" · filmed by " + filmedBy));
+        meta.appendChild(document.createTextNode(" · "));
+      } else if (room.baseline && room.baseline.date) {
+        meta.appendChild(document.createTextNode("Saved setup: " + formatDay(room.baseline.date)));
+        if (filmedBy) meta.appendChild(document.createTextNode(" · filmed by " + filmedBy));
+        meta.appendChild(document.createTextNode(" · "));
+      } else {
+        meta.appendChild(document.createTextNode("No check yet"));
+        if (filmedBy) meta.appendChild(document.createTextNode(" · filmed by " + filmedBy));
+        meta.appendChild(document.createTextNode(" · "));
+      }
       meta.appendChild(statusLine(last ? last.status : (room.status || "")));
       main.appendChild(meta);
       row.appendChild(main);
@@ -148,7 +202,16 @@
     var li = el("li", "feed-entry" + (isNew ? " is-new" : ""));
     li.appendChild(statusLine(entry.status));
 
-    li.appendChild(el("h3", "feed-headline", text(entry.headline) || (text(entry.room) + " — checked")));
+    var headline = el("h3", "feed-headline", text(entry.headline) || (text(entry.room) + " — checked"));
+    var entrySimulated = isSimulatedText(entry.filmed_by) || isSimulatedText(entry.source) ||
+      isSimulatedText(entry.origin) || isSimulatedText(entry.device) ||
+      isSimulatedText(entry.room) || isSimulatedText(entry.headline) ||
+      isSimulatedText(entry.concept);
+    if (entrySimulated) {
+      headline.appendChild(document.createTextNode(" "));
+      headline.appendChild(simulationTag());
+    }
+    li.appendChild(headline);
 
     var metaParts = [];
     if (entry.room) metaParts.push(text(entry.room));
@@ -162,28 +225,40 @@
     var items = Array.isArray(entry.items) ? entry.items : [];
     if (items.length) {
       var list = el("ul", "feed-items");
+      var seenConcepts = Object.create(null);
       items.forEach(function (item) {
         if (!item || typeof item !== "object") return;
-        var row = el("li");
-        var concept = text(item.concept);
+        var rawConcept = text(item.concept);
+        var itemSimulated = isSimulatedText(rawConcept) || isSimulatedText(item.source) || isSimulatedText(item.origin);
+        var concept = itemSimulated ? cleanSimulatedConcept(rawConcept) : rawConcept;
+        var dedupeKey = (concept || rawConcept).trim().toLowerCase();
+        if (!dedupeKey) dedupeKey = text(item.change).trim().toLowerCase() + "|" + text(item.next_step).trim().toLowerCase();
+        if (dedupeKey && seenConcepts[dedupeKey]) return;
+        if (dedupeKey) seenConcepts[dedupeKey] = true;
+
+        var row = el("li", "feed-item");
         if (concept) row.appendChild(el("span", "feed-item-concept", concept));
+        if (itemSimulated) {
+          if (concept) row.appendChild(document.createTextNode(" "));
+          row.appendChild(simulationTag());
+        }
         if (item.next_step && /on purpose/i.test(text(item.next_step))) {
           var tag = el("span", "dad-choice-tag", "Dad's choice");
-          if (concept) row.appendChild(document.createTextNode(" "));
+          if (concept || itemSimulated) row.appendChild(document.createTextNode(" "));
           row.appendChild(tag);
         }
         var change = CHANGE_WORDS[item.change] || text(item.change).replace(/_/g, " ");
         if (change) row.appendChild(document.createTextNode((concept ? " — " : "") + change));
         if (item.risk) row.appendChild(el("span", "feed-item-risk", " · risk: " + text(item.risk)));
-        list.appendChild(row);
         if (item.next_step) {
           var step = el("p", "feed-next-step");
           step.appendChild(el("span", "feed-next-step-label", "Next step: "));
           step.appendChild(document.createTextNode(text(item.next_step)));
-          list.appendChild(el("li")).appendChild(step);
+          row.appendChild(step);
         }
+        list.appendChild(row);
       });
-      li.appendChild(list);
+      if (list.childNodes.length) li.appendChild(list);
     }
 
     var links = el("div", "feed-links");

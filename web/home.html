@@ -10,6 +10,23 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Literata:opsz,wght@7..72,400;7..72,600&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/web/app.css">
 <link rel="stylesheet" href="/web/home.css">
+<style>
+.flow-list { list-style: none; margin: 0; padding: 0; display: flex; align-items: flex-start; gap: 1.25rem; }
+.flow-item { flex: 1 1 0; border-top: 1.5px solid currentColor; padding-top: 0.75rem; position: relative; }
+.flow-arrow { display: block; margin-top: 0.75rem; }
+.flow-arrow svg { display: block; }
+.next-list { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: 2.5rem; }
+.next-list li { break-inside: avoid; border-top: 1.5px solid currentColor; padding: 0.75rem 0; }
+.where-list { list-style: none; margin: 0; padding: 0; }
+.where-list li { border-top: 1.5px solid currentColor; padding: 0.6rem 0; }
+.where-list li:last-child { border-bottom: 1.5px solid currentColor; }
+@media (max-width: 700px) {
+  .flow-list { flex-direction: column; gap: 1rem; }
+  .flow-item { width: 100%; }
+  .flow-arrow svg { transform: rotate(90deg); transform-origin: left center; }
+  .next-list { columns: 1; }
+}
+</style>
 </head>
 <body>
 
@@ -92,6 +109,43 @@
     <p class="steps-note">Nothing to install. No account. Any phone, 15&ndash;30 seconds, lights on.</p>
   </section>
 
+  <!-- How it works -->
+  <section class="home-section" aria-labelledby="how-heading">
+    <h2 id="how-heading" class="section-heading">How it works</h2>
+    <ol class="flow-list">
+      <li class="flow-item">
+        <h3 class="step-title">Film</h3>
+        <p>Any phone, or the glasses.</p>
+        <p class="mono">phone &middot; glasses</p>
+        <span class="flow-arrow" aria-hidden="true"><svg width="28" height="12" viewBox="0 0 28 12" fill="none" focusable="false"><path d="M1 6 H25 M20 1.5 L25 6 L20 10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </li>
+      <li class="flow-item">
+        <h3 class="step-title">Blur</h3>
+        <p>People and papers are found and blurred before anything is stored or reasoned over.</p>
+        <p class="mono">sam-3.1</p>
+        <span class="flow-arrow" aria-hidden="true"><svg width="28" height="12" viewBox="0 0 28 12" fill="none" focusable="false"><path d="M1 6 H25 M20 1.5 L25 6 L20 10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </li>
+      <li class="flow-item">
+        <h3 class="step-title">Find</h3>
+        <p>What&rsquo;s in the room is listed, then each object is tracked through both videos.</p>
+        <p class="mono">muse-spark-1.3 &middot; sam-3.1</p>
+        <span class="flow-arrow" aria-hidden="true"><svg width="28" height="12" viewBox="0 0 28 12" fill="none" focusable="false"><path d="M1 6 H25 M20 1.5 L25 6 L20 10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </li>
+      <li class="flow-item">
+        <h3 class="step-title">Prove</h3>
+        <p>Re-checks, a coverage check and a second opinion; anything unproven is struck.</p>
+        <p class="mono">sam-3.1 &middot; muse-wonder-1.0</p>
+        <span class="flow-arrow" aria-hidden="true"><svg width="28" height="12" viewBox="0 0 28 12" fill="none" focusable="false"><path d="M1 6 H25 M20 1.5 L25 6 L20 10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </li>
+      <li class="flow-item">
+        <h3 class="step-title">Tell</h3>
+        <p>A words-only family feed and a family agent; the update is written even one for Dad.</p>
+        <p class="mono">muse-spark-1.3</p>
+      </li>
+    </ol>
+    <p>Every arrow is a check, not a guess.</p>
+  </section>
+
   <!-- Receipts -->
   <section class="home-section" aria-labelledby="receipts-heading">
     <div class="two-col two-col-flip">
@@ -113,6 +167,15 @@
         <p>Anything Second Look can&rsquo;t prove is crossed out in front of you, with the reason &mdash; so a quiet report means &ldquo;nothing proven changed&rdquo;, not &ldquo;the model felt confident&rdquo;.</p>
       </div>
     </div>
+  </section>
+
+  <!-- Why it's different -->
+  <section class="home-section" aria-labelledby="different-heading">
+    <h2 id="different-heading" class="section-heading">Why it&rsquo;s different</h2>
+    <p><strong>It compares visits, not just rooms.</strong> Inventory apps like Encircle or Sortly catalog a room, and fall detectors act after a fall; Second Look shows what drifted between visits.</p>
+    <p><strong>Models check each other.</strong> Muse Spark proposes, SAM 3.1 must prove it, SAM&rsquo;s image re-check can veto its own tracker, and Muse Wonder breaks ties &mdash; as in the verified walker and armchair moments above.</p>
+    <p><strong>Dad has a say.</strong> His watchlist, in his words &mdash; &ldquo;I moved the lamp to read&rdquo; &mdash; makes that the new setup, and updates are written to him, not just about him.</p>
+    <p><strong>Private by construction.</strong> No installed camera, blur before reasoning, raw video deleted by default, and a words-only feed.</p>
   </section>
 
   <!-- Findings that lead to action -->
@@ -236,13 +299,35 @@
     <p class="numbers-note">A smoke test, not a benchmark &mdash; real-room recall is still untested. We would rather show you one small true number than a large vague one. A fresh check on the sample pair takes about a minute and about <span class="mono">$0.33</span>; past checks replay free from cache. The sample pair is pans over AI-generated stills; real, cluttered rooms are the next test.</p>
   </section>
 
-  <!-- Next: in his glasses -->
-  <section class="home-section" aria-labelledby="glasses-heading">
-    <h2 id="glasses-heading" class="section-heading">Next: in his glasses</h2>
-    <p>The same check can run in smart glasses Dad wears: a quiet heads-up line when his walker is out of reach, and if he falls, a gentle Are you OK? before anyone is told. He wears it, he owns it, and only words reach the family.</p>
+  <!-- What's next -->
+  <section class="home-section" aria-labelledby="next-heading">
+    <h2 id="next-heading" class="section-heading">What&rsquo;s next</h2>
+    <ul class="next-list">
+      <li><strong>Live capture from glasses he already wears.</strong> Meta&rsquo;s Wearables Device Access Toolkit, with last-seen memory for keys and glasses &mdash; the strongest glasses use.</li>
+      <li><strong>Frames that never leave home.</strong> Self-hosted open-weight Meta models &mdash; Muse Spark Open and SAM &mdash; on a home box.</li>
+      <li><strong>The family agent in WhatsApp.</strong> Meta AI where families already talk; still words only.</li>
+      <li><strong>Route checks, not just rooms.</strong> Bed &rarr; hallway &rarr; bathroom in one walkthrough, including a night-light check.</li>
+      <li><strong>Reach, not just presence.</strong> SAM masks and depth to estimate whether the walker is within arm&rsquo;s length.</li>
+      <li><strong>An OT setup mode.</strong> The occupational therapist films and signs the safe baseline at discharge.</li>
+      <li><strong>Tested in real homes.</strong> A small study with OTs and families, with recall on cluttered rooms first.</li>
+    </ul>
     <div class="hero-actions">
       <a class="btn btn-primary" href="/glasses">Try the glasses simulation</a>
     </div>
+  </section>
+
+  <!-- Where else it helps -->
+  <section class="home-section" aria-labelledby="elsewhere-heading">
+    <h2 id="elsewhere-heading" class="section-heading">Where else it helps</h2>
+    <ul class="where-list">
+      <li>Home-care agencies between visits</li>
+      <li>Assisted-living room checks</li>
+      <li>Post-surgery home setup</li>
+      <li>Rental move-in and move-out</li>
+      <li>Insurance home inventories that update themselves</li>
+      <li>Shared labs and classrooms (equipment drift)</li>
+    </ul>
+    <p class="big-line">Same engine: two walkthroughs in, proven changes out.</p>
   </section>
 
   <!-- FAQ -->

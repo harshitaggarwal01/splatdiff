@@ -31,15 +31,20 @@
     <h1 class="family-title">How is Dad's room?</h1>
     <p class="family-intro">This page shows words, never pictures: each check's result, as soon as it finishes. The videos stay where they were filmed and are deleted after the check unless someone chose to keep them.</p>
 
+    <div class="family-actions notify-line">
+      <button id="notify-btn" class="btn notify-btn" type="button">Notify me on this device</button>
+      <p id="notify-note" class="notify-note" role="status" aria-live="polite"></p>
+    </div>
+
     <section class="family-section agent-section" aria-labelledby="ask-heading">
       <h2 id="ask-heading" class="section-title family-section-title">Ask about Dad's room</h2>
       <form id="ask-form" class="ask-form">
         <label class="visually-hidden" for="ask-input">Ask about Dad's room</label>
-        <input id="ask-input" class="ask-input" type="text" name="question" placeholder="Is his walker where it should be?" autocomplete="off">
+        <input id="ask-input" class="ask-input" type="text" name="question" placeholder="Where was his walker last seen?" autocomplete="off">
         <button id="ask-submit" class="btn btn-primary" type="submit">Ask</button>
       </form>
       <div class="ask-chips" aria-label="Suggested questions">
-        <button class="chip" type="button" data-question="What changed this week?">What changed this week?</button>
+        <button class="chip" type="button" data-question="What changed since the last visit?">What changed since the last visit?</button>
         <button class="chip" type="button" data-question="Is anything on the floor?">Is anything on the floor?</button>
         <button class="chip" type="button" data-question="Who filmed last, and when?">Who filmed last, and when?</button>
       </div>
@@ -94,11 +99,6 @@
         </div>
       </div>
     </section>
-
-    <div class="family-actions">
-      <button id="notify-btn" class="btn" type="button">Notify me on this device</button>
-      <p id="notify-note" class="notify-note" role="status" aria-live="polite"></p>
-    </div>
 
     <section class="family-section" aria-labelledby="rooms-heading">
       <h2 id="rooms-heading" class="section-title family-section-title">Rooms</h2>

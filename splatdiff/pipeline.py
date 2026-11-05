@@ -447,10 +447,10 @@ def _judge_frame(side: str, s: dict, norm_path, keyframes: list):
 def _watchlist_note(concept: str, status: str) -> str:
     c = str(concept)
     if status == "missing":
-        return (f"{c} is no longer where it was - check it is within reach of the bed/chair "
+        return (f"{c} is no longer where it was. Check it is within reach of the bed/chair "
                 f"and find it before it is needed.")
     if status == "moved":
-        return (f"{c} has moved from where it was - check it is within reach of the bed/chair "
+        return (f"{c} has moved from where it was. Check it is within reach of the bed/chair "
                 f"and has not become a trip hazard.")
     if status == "not_seen":
         return (f"{c} was not detected in either video - check it manually; SAM may have missed it, "

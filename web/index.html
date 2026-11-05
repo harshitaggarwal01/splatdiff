@@ -13,9 +13,6 @@
     .masthead-top .wordmark:hover { text-decoration: underline; text-underline-offset: 4px; }
     .masthead-top .wordmark:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 2px; }
     /* "Needs attention" banner: calm brick-ink panel, moss line when all is well. */
-    .attention-banner { margin: 0 0 1.25rem; padding: 1rem 1.15rem; border-radius: 10px; }
-    .attention-banner.is-alert { background: #5f2718; color: #fbeee6; border: 1px solid #4c1e12; }
-    .attention-banner.is-calm { background: #eef2df; color: #3c5227; border: 1px solid #d3ddba; }
     .attention-title { margin: 0 0 0.5rem; font-size: 1.05rem; }
     .attention-calm { margin: 0; }
     .attention-list { margin: 0; padding-left: 1.2rem; }
@@ -34,6 +31,32 @@
     @media (prefers-reduced-motion: reduce) {
       .attention-highlight { animation: none; outline: 3px solid #b4552d; outline-offset: 2px; }
     }
+    /* (5) One secondary style for every non-primary button; only "Check the room" is solid green. */
+    .btn { min-height: 2.75rem; border-radius: 10px; }
+    .btn-quiet:not(.record-btn), a.btn-quiet:not(.record-btn) {
+      background: #fffdf6; background: var(--paper, #fffdf6);
+      border: 1px solid #DDD3C2; color: #2b2620; color: var(--ink, #2b2620);
+      border-radius: 10px; min-height: 2.75rem;
+    }
+    .btn-quiet:not(.record-btn):hover, .btn-quiet:not(.record-btn):focus-visible {
+      background: #fffdf6; background: var(--paper, #fffdf6);
+      border-color: #DDD3C2;
+    }
+    .btn-danger-quiet:not(.record-btn) {
+      background: #fffdf6; background: var(--paper, #fffdf6);
+      border: 1px solid #DDD3C2; color: #2b2620; color: var(--ink, #2b2620);
+    }
+    /* (4) "Record with this phone": quiet text link inside the drop zone, not a full-width box. */
+    .dropzone .record-btn {
+      background: none; border: none; box-shadow: none; min-height: 0; height: auto;
+      padding: 0.25rem 0.5rem; margin-top: 0.35rem; border-radius: 4px;
+      color: inherit; font: inherit; font-size: 0.9em; cursor: pointer;
+      text-decoration: underline; text-underline-offset: 3px;
+      display: inline-flex; align-items: center; gap: 0.35rem; align-self: center;
+    }
+    .dropzone .record-btn:hover, .dropzone .record-btn:focus-visible { text-decoration-thickness: 2px; }
+    .dropzone .record-btn:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+    .dropzone .record-btn[disabled] { opacity: 0.6; text-decoration: none; cursor: default; }
   </style>
   <script src="/web/app.js" defer></script>
 </head>
@@ -90,12 +113,12 @@
               <option value="Kitchen"></option>
               <option value="Living room"></option>
             </datalist>
-            <p class="field-help" id="roomHelp">Which room are you checking?</p>
+            <p class="field-help" id="roomHelp">e.g. Bedroom, Hallway, Bathroom</p>
           </div>
           <div class="intake-field">
             <label class="field-label" for="filmedByInput">Filmed by</label>
-            <input type="text" id="filmedByInput" class="text-input" autocomplete="name" spellcheck="false" placeholder="e.g. Maya, the aide">
-            <p class="field-help">Who filmed today&rsquo;s walkthrough? Named on the family feed.</p>
+            <input type="text" id="filmedByInput" class="text-input" autocomplete="name" spellcheck="false" placeholder="e.g. Maya, the aide" aria-describedby="filmedByHelp">
+            <p class="field-help" id="filmedByHelp">Shown on the family feed, e.g. Maya (aide)</p>
           </div>
         </div>
 
@@ -116,14 +139,14 @@
                 <span class="dropzone-label">Last visit</span>
                 <span class="dropzone-helper">the safe setup, as the OT or nurse left it</span>
                 <span class="dropzone-hint" id="dropBeforeHint">Click or drop a walkthrough video</span>
+                <button type="button" class="btn btn-quiet record-btn" id="recordBtnBefore" aria-expanded="false" aria-controls="recordPanelBefore">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+                  Record with this phone
+                </button>
               </div>
               <video class="dropzone-video" id="videoBefore" controls playsinline preload="metadata" hidden></video>
               <span class="dropzone-file mono" id="fileNameBefore" hidden></span>
             </div>
-            <button type="button" class="btn btn-quiet record-btn" id="recordBtnBefore" aria-expanded="false" aria-controls="recordPanelBefore">
-              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
-              Record with this phone
-            </button>
             <div class="record-panel" id="recordPanelBefore" hidden>
               <div class="record-frame">
                 <video class="record-video" id="camPreviewBefore" autoplay muted playsinline aria-label="Camera preview for the last-visit walkthrough"></video>
@@ -148,14 +171,14 @@
                 <svg class="icon icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
                 <span class="dropzone-label">Today</span>
                 <span class="dropzone-hint" id="dropAfterHint">Click or drop a walkthrough video</span>
+                <button type="button" class="btn btn-quiet record-btn" id="recordBtnAfter" aria-expanded="false" aria-controls="recordPanelAfter">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+                  Record with this phone
+                </button>
               </div>
               <video class="dropzone-video" id="videoAfter" controls playsinline preload="metadata" hidden></video>
               <span class="dropzone-file mono" id="fileNameAfter" hidden></span>
             </div>
-            <button type="button" class="btn btn-quiet record-btn" id="recordBtnAfter" aria-expanded="false" aria-controls="recordPanelAfter">
-              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
-              Record with this phone
-            </button>
             <div class="record-panel" id="recordPanelAfter" hidden>
               <div class="record-frame">
                 <video class="record-video" id="camPreviewAfter" autoplay muted playsinline aria-label="Camera preview for today's walkthrough"></video>

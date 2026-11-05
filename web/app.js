@@ -122,6 +122,8 @@ const state = {
   cam: null,
   deleteArmed: false,
   deleteTimer: null,
+  judgeStayed: 0,
+  judgeStayedLine: null,
 };
 
 const ICON_X = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>';
@@ -153,6 +155,11 @@ function sentenceCase(s) {
   const t = String(s == null ? "" : s).trim().replace(/\s+/g, " ").toLowerCase();
   return t ? t.charAt(0).toUpperCase() + t.slice(1) : "";
 }
+function capitaliseSentences(s) {
+  let t = String(s == null ? "" : s);
+  t = t.replace(/(^\s*[a-z])|([.!?]["'”’)]?\s+[a-z])/g, (m) => m.toUpperCase());
+  return t;
+}
 function reducedMotion() {
   return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -164,6 +171,25 @@ function changeLabel(change) {
   const c = String(change || "").toLowerCase().replace(/-/g, "_");
   if (c === "on_floor" || c === "onfloor" || c === "floor") return "on the floor";
   return c.replace(/_/g, " ");
+}
+
+/* (1) Human privacy sentence built from blur counts + whether media was kept. */
+function privacySentence(people, docs, keepMedia) {
+  const p = isNum(people) ? people : 0;
+  const d = isNum(docs) ? docs : 0;
+  const sentences = [];
+  if (p > 0 && d > 0) {
+    sentences.push(p + " " + plural(p, "person", "people") + " and " + d + " " + plural(d, "paper", "papers") + " blurred before review.");
+  } else if (p > 0) {
+    sentences.push(p + " " + plural(p, "person", "people") + " blurred before review.");
+  } else if (d > 0) {
+    sentences.push(d + " " + plural(d, "paper", "papers") + " blurred before review.");
+    sentences.push("No people were in frame.");
+  } else {
+    sentences.push("No people were in frame.");
+  }
+  sentences.push(keepMedia ? "The videos were kept, as you asked." : "The videos were deleted after the check.");
+  return sentences.join(" ");
 }
 
 /* Text from a trend value, whether it arrives as a string or an object. */
@@ -222,26 +248,59 @@ function intentionalInfo(claim) {
   return { quote: String(claim.quote || claim.dad_says || claim.intentional_quote || claim.voice_quote || "") };
 }
 
-/* Remove SAM box/coordinate/confidence fragments from Spark prose, then tidy. */
+/* Put spaces back around dashes that lost them, e.g. "was-check" spacing slips. */
+function fixDashSpacing(s) {
+  let t = String(s == null ? "" : s);
+  t = t.replace(/\s*([—–])\s*/g, " $1 ");
+  t = t.replace(/(\w)\s+-\s*(\w)/g, "$1 - $2");
+  t = t.replace(/(\w)\s*-\s+(\w)/g, "$1 - $2");
+  t = t.replace(/\b(was|were|is|are|has|have|had|been|being)-(?=[a-z])/gi, "$1 — ");
+  return t;
+}
+
+/* Remove SAM box/coordinate/confidence fragments from Spark prose, then tidy into real sentences. */
 function cleanExplanation(value) {
   let s = String(value == null ? "" : value);
   s = s.replace(/\bbox\s*\[[^\]]*\]/gi, "");
-  s = s.replace(/\[\s*\d+(?:\s*,\s*\d+){2,}\s*\]/g, "");
-  s = s.replace(/\(\s*(?:conf|confidence)\b[^)]*\)/gi, "");
+  s = s.replace(/\[[^\]]*\]/g, "");
+  s = s.replace(/\(\s*(?:best|conf|confidence)\b[^)]*\)/gi, "");
+  s = s.replace(/\(\s*best\s*\)/gi, "");
+  s = s.replace(/\b[^,.;!?]*\bframes?\b[^,.;!?]*\b(?:before|after)\b[^,.;!?]*/gi, "");
+  s = s.replace(/\bframes?\s+(?:before|after)\b[^,.;!?]*/gi, "");
   s = s.replace(/\bwith\s+best\s+at\b[^,.;!?]*/gi, "");
+  s = s.replace(/\bbest\s+(?:frame|at|in|view|seen)[^,.;!?]*/gi, "");
   s = s.replace(/\bbest\s+at\b[^,.;!?]*/gi, "");
+  s = s.replace(/\bbest\b/gi, "");
   s = s.replace(/\bat\s+conf(?:idence)?\b\s*[:=]?\s*\d+(?:\.\d+)?/gi, "");
   s = s.replace(/\bwith\s+at\b\s*,?/gi, "");
   s = s.replace(/\bconf(?:idence)?\s*[:=]?\s*\d+(?:\.\d+)?\b/gi, "");
   s = s.replace(/\b(?:with|at)\s*(?=[,.;!?]|$)/gi, "");
   s = s.replace(/\(\s*[,;:]?\s*\)/g, "");
+  s = s.replace(/\(\s*\)/g, "");
+  s = fixDashSpacing(s);
   s = s.replace(/\s+([,.;:!?])/g, "$1");
   s = s.replace(/,(\s*,)+/g, ",");
   s = s.replace(/([.!?])\s*,/g, "$1");
   s = s.replace(/\s{2,}/g, " ");
   s = s.replace(/^[\s,;]+/, "");
   s = s.replace(/\s+(?:with|at)\s*$/i, "");
-  return s.trim();
+  s = s.replace(/[\s,;]+$/, "").trim();
+  return capitaliseSentences(s);
+}
+
+/* Plain human prose only: no brackets, numbers-as-evidence, or model words left in it. */
+function isCleanProse(value) {
+  const s = String(value == null ? "" : value).trim();
+  if (s.length < 12) return false;
+  if (/\[|\]|\(|\)|\bbest\b|\bconf\b|confidence|\bframes?\b|\bboxes?\b|\d{2,}/i.test(s)) return false;
+  if (!/[a-z]/i.test(s)) return false;
+  if (!/\s/.test(s)) return false;
+  return true;
+}
+
+function tidySentence(value) {
+  const cleaned = cleanExplanation(value);
+  return cleaned ? capitaliseSentences(cleaned) : "";
 }
 
 /* ---------------- Date / run_id helpers ---------------- */
@@ -305,8 +364,9 @@ function applyBaselineVisibility() {
     if (active) {
       const entry = roomEntryFor(roomValue());
       const date = entry && entry.baseline ? fmtIsoDate(entry.baseline.date) : "";
-      els.baselineActiveNote.textContent = "Last visit: using the saved setup" +
-        (date ? " from " + date : "") + " for " + roomValue() + ". Untick above to film a new last-visit video instead.";
+      const room = roomValue();
+      els.baselineActiveNote.textContent = "Comparing with Dad's saved setup for the " + room +
+        (date ? " (" + date + ")" : "") + ". Untick to use a different last-visit video.";
     }
   }
   updateRunButton();
@@ -455,9 +515,11 @@ function initDropzone(side) {
 
   zone.addEventListener("click", (ev) => {
     if (ev.target.closest("video")) return;
+    if (ev.target.closest(".record-btn")) return;
     if (!zone.classList.contains("has-video") || ev.target === zone) input.click();
   });
   zone.addEventListener("keydown", (ev) => {
+    if (ev.target.closest && ev.target.closest(".record-btn")) return;
     if ((ev.key === "Enter" || ev.key === " ") && !zone.classList.contains("has-video")) {
       ev.preventDefault();
       input.click();
@@ -604,7 +666,7 @@ function initRecording() {
   ["before", "after"].forEach((side) => {
     const c = camEls(side);
     if (!c.btn) return;
-    c.btn.addEventListener("click", () => startCamRecording(side));
+    c.btn.addEventListener("click", (ev) => { ev.stopPropagation(); startCamRecording(side); });
     c.stop.addEventListener("click", stopCamRecording);
   });
 }
@@ -634,7 +696,7 @@ async function loadSample() {
       renderTags(null);
     }
     els.sampleNote.hidden = false;
-    els.sampleNote.textContent = "Synthetic test room made with Muse Image, so every result can be scored. Real footage works the same way.";
+    els.sampleNote.textContent = "Synthetic test room made with Muse Image, so every result can be scored. Real, cluttered rooms are the next test.";
     updateRunButton();
     els.runBtn.focus();
   } catch (err) {
@@ -785,7 +847,7 @@ async function startVoiceNote() {
 
 const STAGE_DEFS = [
   { id: "voice", title: "Listening to your notes", model: "muse-voice-transcribe-1.0", detail: "", optional: true },
-  { id: "normalize", title: "Preparing both walkthroughs", model: "ffmpeg", detail: "5 fps, 640 px" },
+  { id: "normalize", title: "Preparing both walkthroughs", model: "ffmpeg", detail: "" },
   { id: "keyframes", title: "Picking the moments to compare", model: "ffmpeg", detail: "" },
   { id: "privacy", title: "Blurring people and papers", model: "sam-3.1", detail: "" },
   { id: "inventory", title: "Taking inventory of the room", model: "muse-spark-1.3", detail: "" },
@@ -854,9 +916,28 @@ function addStageLine(id, html) {
   const li = document.createElement("li");
   li.innerHTML = html;
   stageLines(id).appendChild(li);
+  return li;
+}
+
+/* Undo the post-result collapse so a fresh run shows the stages as they happen. */
+function restoreLiveView() {
+  const wrap = $("liveDetails");
+  const bar = $("liveCheckedLine");
+  if (wrap && els.stageList && els.stageList.parentNode === wrap) {
+    const parent = wrap.parentNode;
+    if (parent) {
+      parent.insertBefore(els.stageList, wrap);
+      if (els.ledgerLine) parent.insertBefore(els.ledgerLine, wrap);
+    }
+  }
+  if (bar) bar.remove();
+  if (wrap) wrap.remove();
+  if (els.stageList) els.stageList.hidden = false;
+  if (els.ledgerLine) els.ledgerLine.hidden = false;
 }
 
 function resetStages() {
+  restoreLiveView();
   els.stageList.innerHTML = "";
   state.stageRows.clear();
   state.trackChips.clear();
@@ -867,6 +948,8 @@ function resetStages() {
   state.modelsUsed = [];
   state.lastElapsed = 0;
   state.lastCost = 0;
+  state.judgeStayed = 0;
+  state.judgeStayedLine = null;
   STAGE_DEFS.filter((d) => !d.optional).forEach((def) => {
     const row = renderStage(def);
     els.stageList.appendChild(row);
@@ -874,6 +957,63 @@ function resetStages() {
   });
   els.liveError.hidden = true;
   updateLedger(null);
+}
+
+/* After the result arrives: one quiet line, with the full stage list behind a disclosure. */
+function collapseLiveStages(result) {
+  if (!els.stageList || !els.ledgerLine || !els.stageList.parentNode) return;
+  if ($("liveCheckedLine")) return;
+  const parent = els.stageList.parentNode;
+  const stats = (result && result.stats && typeof result.stats === "object") ? result.stats : {};
+  const concepts = isNum(stats.concepts) ? stats.concepts :
+    isNum(result && result.concepts) ? result.concepts :
+    (result && Array.isArray(result.concepts) ? result.concepts.length :
+      (state.inventoryConcepts.length || 0));
+  const samRequests = isNum(stats.sam_requests) ? stats.sam_requests :
+    isNum(result && result.sam_requests) ? result.sam_requests : 0;
+  const cost = isNum(result && result.cost_usd) ? result.cost_usd : state.lastCost;
+  const latency = isNum(result && result.latency_s) ? result.latency_s : state.lastElapsed;
+  const metaModels = (result && Array.isArray(result.models) && result.models.length)
+    ? result.models.filter((m) => /^(muse-|sam-)/i.test(String(m))).length || result.models.length
+    : state.modelsUsed.filter((m) => /^(muse-|sam-)/i.test(String(m))).length;
+
+  /* (6) Counts/cost live here, inside the "How this was checked" disclosure, not in the report header. */
+  const models = state.modelsUsed.length ? state.modelsUsed.join(", ") : "—";
+  els.ledgerLine.textContent =
+    "Checked " + concepts + " " + plural(concepts, "object", "objects") +
+    " · " + samRequests + " SAM tracks · cost " + fmtCost(cost) +
+    " · elapsed " + latency.toFixed(1) + " s · models used: " + models;
+
+  const bar = document.createElement("div");
+  bar.id = "liveCheckedLine";
+  bar.className = "live-checked-line";
+  const text = document.createElement("span");
+  text.className = "live-checked-text";
+  text.textContent = "Checked in " + fmtSeconds(latency) + " · " + concepts + " " +
+    plural(concepts, "object", "objects") + " · " + metaModels + " Meta " +
+    plural(metaModels, "model", "models");
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "btn btn-quiet live-details-btn";
+  btn.textContent = "How this was checked";
+  btn.setAttribute("aria-expanded", "false");
+  bar.appendChild(text);
+  bar.appendChild(btn);
+
+  const wrap = document.createElement("div");
+  wrap.id = "liveDetails";
+  wrap.className = "live-details";
+  wrap.hidden = true;
+
+  parent.insertBefore(bar, els.stageList);
+  parent.insertBefore(wrap, els.stageList);
+  wrap.appendChild(els.stageList);
+  wrap.appendChild(els.ledgerLine);
+
+  btn.addEventListener("click", () => {
+    wrap.hidden = !wrap.hidden;
+    btn.setAttribute("aria-expanded", String(!wrap.hidden));
+  });
 }
 
 function noteModel(model) {
@@ -922,7 +1062,7 @@ function renderConceptChips(concepts) {
   const all = mergeInventoryConcepts(concepts).slice();
   stageExtra("inventory").innerHTML =
     '<div class="chip-row">' + all.map((c) =>
-      '<span class="track-chip">' + escapeHtml(c) + "</span>").join("") + "</div>";
+      '<span class="track-chip">' + escapeHtml(sentenceCase(c)) + "</span>").join("") + "</div>";
 }
 
 function renderTrackChips(concepts) {
@@ -930,12 +1070,12 @@ function renderTrackChips(concepts) {
   if (!all.length) return;
   stageExtra("track").innerHTML =
     '<div class="chip-row">' + all.map((c) =>
-      '<span class="track-chip" data-concept="' + escapeHtml(c) + '"><span>' + escapeHtml(c) + "</span>" +
+      '<span class="track-chip" data-concept="' + escapeHtml(c) + '"><span>' + escapeHtml(sentenceCase(c)) + "</span>" +
       '<span class="track-marks">' +
       '<span class="track-mark" data-video="before" title="Last visit">L</span>' +
       '<span class="track-mark" data-video="after" title="Today">T</span>' +
       "</span></span>").join("") + "</div>" +
-    '<div class="track-count mono" id="trackCount"></div>';
+    '<div class="track-count" id="trackCount"></div>';
   state.trackChips.clear();
   stageExtra("track").querySelectorAll(".track-chip").forEach((chip) => {
     const key = (chip.getAttribute("data-concept") || "").toLowerCase();
@@ -956,11 +1096,18 @@ function renderTrackChips(concepts) {
   updateTrackCount();
 }
 
+function trackedObjectCount() {
+  if (state.trackChips.size) return state.trackChips.size;
+  if (state.inventoryConcepts.length) return state.inventoryConcepts.length;
+  if (state.trackTotal) return Math.max(1, Math.round(state.trackTotal / 2));
+  return 0;
+}
+
 function updateTrackCount() {
   const el = $("trackCount");
-  if (el && state.trackTotal) {
-    el.textContent = state.trackDone + "/" + state.trackTotal + " tracks";
-  }
+  if (!el) return;
+  const n = trackedObjectCount();
+  el.textContent = n ? "Tracking " + n + " " + plural(n, "object", "objects") + " in both walkthroughs" : "";
 }
 
 function markTrack(event) {
@@ -1010,6 +1157,19 @@ function secondOpinionFrom(event) {
   else if (isNum(opObj.c)) conf = opObj.c;
   else if (isNum(event.wonder_c)) conf = event.wonder_c;
   return { moved, confidence: conf, model: "muse-wonder-1.0" };
+}
+
+/* Judge stage: moved items get a line each; everything else is one quiet summary line. */
+function noteJudgeStayed() {
+  state.judgeStayed += 1;
+  const n = state.judgeStayed;
+  const text = n + " other " + plural(n, "object", "objects") + " stayed put";
+  if (state.judgeStayedLine && state.judgeStayedLine.parentNode) {
+    state.judgeStayedLine.textContent = text;
+  } else {
+    state.judgeStayedLine = addStageLine("judge", escapeHtml(text));
+    state.judgeStayedLine.classList.add("judge-stayed-line");
+  }
 }
 
 /* ---------------- SSE handling ---------------- */
@@ -1115,6 +1275,8 @@ function handleEvent(event) {
         ? event.concepts : state.inventoryConcepts.slice();
       if (concepts.length) renderTrackChips(concepts);
       if (!state.trackTotal && concepts.length) state.trackTotal = concepts.length * 2;
+      const n = trackedObjectCount();
+      if (n) setStage("track", "active", "Tracking " + n + " " + plural(n, "object", "objects") + " in both walkthroughs");
       updateTrackCount();
     }
     if (status === "progress") {
@@ -1126,7 +1288,11 @@ function handleEvent(event) {
       if (isNum(event.total)) state.trackTotal = event.total;
       updateTrackCount();
     }
-    if (status === "done") setStage("track", "done", state.trackTotal ? state.trackTotal + " tracks finished" : "Tracking finished");
+    if (status === "done") {
+      const n = trackedObjectCount();
+      setStage("track", "done", n ? "Tracked " + n + " " + plural(n, "object", "objects") + " in both walkthroughs" : "Tracking finished");
+      updateTrackCount();
+    }
   }
 
   if (stage === "floor") {
@@ -1134,9 +1300,9 @@ function handleEvent(event) {
     noteModel("sam-3.1");
     if (status === "done") {
       const kept = isNum(event.kept) ? event.kept : (Array.isArray(event.items) ? event.items.length : 0);
-      setStage("floor", "done", kept + " on the floor");
+      setStage("floor", "done", kept === 1 ? "1 thing on the floor" : kept + " things on the floor");
     } else if (status === "progress" && event.concept) {
-      addStageLine("floor", escapeHtml(capitalise(event.concept)) +
+      addStageLine("floor", escapeHtml(sentenceCase(event.concept)) +
         (event.kept === false || event.found === false ? " — not confirmed on the floor" : " — on the floor"));
     }
   }
@@ -1152,13 +1318,10 @@ function handleEvent(event) {
     if (status === "progress") {
       const concept = String(event.concept || "Object");
       const alias = typeof event.alias === "string" && event.alias.trim() ? event.alias.trim() : null;
-      const c = isNum(event.c) ? event.c : event.confidence;
       if (alias) {
-        addStageLine("repair",
-          escapeHtml(concept) + " → “" + escapeHtml(alias) + "”" +
-          (isNum(c) ? ' <span class="mono">(c ' + c.toFixed(2) + ")</span>" : ""));
+        addStageLine("repair", escapeHtml(sentenceCase(concept)) + " → “" + escapeHtml(alias) + "”");
       } else {
-        addStageLine("repair", escapeHtml(concept) + " — no visual match");
+        addStageLine("repair", escapeHtml(sentenceCase(concept)) + " — no visual match");
       }
     }
     if (status === "done") {
@@ -1170,35 +1333,24 @@ function handleEvent(event) {
 
   if (stage === "recheck" && status === "progress") {
     const where = sideWords(event.video);
-    const conf = isNum(event.c) ? event.c : event.confidence;
     if (event.found) {
       addStageLine("recheck",
-        escapeHtml(capitalise(event.concept || "Object")) + " — found" +
-        (where ? " in " + escapeHtml(where) : "") +
-        (isNum(conf) ? ' <span class="mono">(c ' + conf.toFixed(2) + ")</span>" : ""));
+        escapeHtml(sentenceCase(event.concept || "Object")) + " — found" +
+        (where ? " in " + escapeHtml(where) : ""));
     } else {
       addStageLine("recheck",
-        escapeHtml(capitalise(event.concept || "Object")) + " — confirmed absent" +
+        escapeHtml(sentenceCase(event.concept || "Object")) + " — confirmed absent" +
         (where ? " from " + escapeHtml(where) : ""));
     }
   }
   if (stage === "recheck" && status === "done") setStage("recheck", "done");
 
   if (stage === "judge" && status === "progress") {
-    const conf = isNum(event.confidence) ? event.confidence : event.c;
-    addStageLine("judge",
-      escapeHtml(capitalise(event.concept || "Object")) + " — " +
-      (event.moved ? "moved" : "stayed") +
-      (isNum(conf) ? ' <span class="mono">' + conf.toFixed(2) + "</span>" : "") +
-      (event.reason ? ' <span>· ' + escapeHtml(event.reason) + "</span>" : ""));
-    if (event.escalated === true || event.escalated === "true") {
-      noteModel("muse-wonder-1.0");
-      const op = secondOpinionFrom(event);
-      const word = op.moved === false ? "stayed" : "moved";
-      addStageLine("judge",
-        escapeHtml(capitalise(event.concept || "Object")) +
-        ' — second opinion from <span class="mono">muse-wonder-1.0</span>: ' + word +
-        (isNum(op.confidence) ? ' <span class="mono">' + op.confidence.toFixed(2) + "</span>" : ""));
+    if (event.escalated === true || event.escalated === "true") noteModel("muse-wonder-1.0");
+    if (event.moved) {
+      addStageLine("judge", escapeHtml(sentenceCase(event.concept || "Object")) + " — moved");
+    } else {
+      noteJudgeStayed();
     }
   }
   if (stage === "judge" && status === "done") setStage("judge", "done");
@@ -1208,11 +1360,8 @@ function handleEvent(event) {
     const sentence = trendTextFrom(event.trend) || trendTextFrom(event.sentence) ||
       trendTextFrom(event.text) || trendTextFrom(event.summary) || trendTextFrom(event);
     if (sentence) {
-      setStage("trend", status === "done" ? "done" : "active", sentence);
-      if (status === "done" || status === "progress") {
-        const lines = stageLines("trend");
-        if (!lines.textContent.includes(sentence)) addStageLine("trend", escapeHtml(sentence));
-      }
+      /* Shown once, as the stage detail — not again as a stage line. */
+      setStage("trend", status === "done" ? "done" : "active", capitaliseSentences(cleanExplanation(sentence)));
     } else if (status === "done") {
       setStage("trend", "done");
     }
@@ -1523,7 +1672,7 @@ function evidenceBoard(claim, result) {
     ["Confidence — last visit / today", fmtConf(ev.confidence_before) + " / " + fmtConf(ev.confidence_after)],
     ["SAM re-check", formatRecheck(ev.recheck)],
   ];
-  if (claim && claim.risk_reason) rows.push(["Why this risk", String(claim.risk_reason)]);
+  if (claim && claim.risk_reason) rows.push(["Why this risk", tidySentence(claim.risk_reason)]);
   rows.push(["Source", (claim && claim.source) || "—"]);
   if (ev.label) rows.unshift(["SAM finding", String(ev.label).replace(/_/g, " ")]);
   const table = '<table class="evidence-table"><tbody>' + rows.map((r) =>
@@ -1640,19 +1789,34 @@ function makeDoNext(kind, concept, result, owner) {
   block.className = "do-next";
   block.innerHTML =
     '<p class="do-next-title">Do this next</p>' +
-    "<ol>" + steps.map((s) => "<li>" + escapeHtml(s) + "</li>").join("") + "</ol>";
+    "<ol>" + steps.map((s) => "<li>" + escapeHtml(capitaliseSentences(s)) + "</li>").join("") + "</ol>";
   block.appendChild(makeSortedControl(owner, result, concept));
   return block;
 }
 
+/* Small link used when the finding below already carries the actions. */
+function makeSeeWhatToDo(targetId) {
+  const link = document.createElement("a");
+  link.className = "see-what-link";
+  link.href = "#" + targetId;
+  link.textContent = "See what to do";
+  link.addEventListener("click", (ev) => {
+    ev.preventDefault();
+    highlightAttentionTarget(targetId);
+  });
+  return link;
+}
+
 /* "This is the new setup" -> save this run's AFTER video as the room baseline. */
 function makeBaselineControl(claim, result, isPrimary) {
+  const change = String((claim && claim.change) || "").toLowerCase().replace(/-/g, "_");
+  const label = change === "removed" ? "It's gone on purpose" : "This is the new setup";
   const wrap = document.createElement("div");
   wrap.className = "baseline-save-row";
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = isPrimary ? "btn btn-primary baseline-save-btn" : "btn btn-quiet baseline-save-btn";
-  btn.innerHTML = ICON_HOME + "<span>This is the new setup</span>";
+  btn.innerHTML = ICON_HOME + "<span>" + escapeHtml(label) + "</span>";
   const status = document.createElement("span");
   status.className = "baseline-save-status";
   status.setAttribute("role", "status");
@@ -1687,30 +1851,47 @@ function makeBaselineControl(claim, result, isPrimary) {
   return wrap;
 }
 
+/* The one human sentence at the top of a finding, by change type. */
+function findingBodyText(claim) {
+  const change = String((claim && claim.change) || "").toLowerCase().replace(/-/g, "_");
+  if (change === "removed") return "Seen in the last visit, not seen today.";
+  if (change === "added") return "New today — not in the last visit.";
+  if (change === "on_floor") return "On the floor in the walking path.";
+  if (change === "moved") {
+    const raw = claim.explanation || claim.where || "";
+    const cleaned = cleanExplanation(raw);
+    return isCleanProse(cleaned) ? capitaliseSentences(cleaned) : "In a different place than in the last visit.";
+  }
+  const cleaned = cleanExplanation((claim && (claim.explanation || claim.where)) || "");
+  return isCleanProse(cleaned) ? capitaliseSentences(cleaned) : "";
+}
+
 function renderFinding(claim, result, index) {
   claim = claim || {};
   const risk = riskOf(claim);
   const change = String(claim.change || "").toLowerCase();
+  const changeKey = change.replace(/-/g, "_");
   const intentional = intentionalInfo(claim);
   const el = document.createElement("article");
   el.className = "finding";
   el.id = attentionTargetId("finding", claim.concept || "object", index);
   el.dataset.concept = String(claim.concept || "");
-  const explanation = cleanExplanation(claim.explanation || claim.where || "");
+  const bodyText = findingBodyText(claim);
+  const safetyNote = claim.safety_note ? tidySentence(claim.safety_note) : "";
   const intentionalHtml = intentional
     ? '<p class="intentional-line" style="color: var(--moss); margin: -2px 0 8px; font-weight: 500;">Dad says: “' +
-      escapeHtml(intentional.quote || "I moved it on purpose") + "”</p>"
+      escapeHtml(capitaliseSentences(intentional.quote || "I moved it on purpose")) + "”</p>"
     : "";
   el.innerHTML =
-    '<div class="finding-top">' +
-    '<span class="risk-tag risk-' + risk + '"><span class="risk-dot" aria-hidden="true"></span>' +
-    escapeHtml(risk) + " risk</span></div>" +
+    '<div class="finding-title-row">' +
     '<h4 class="finding-title ' + changeClass(change) + '">' +
     escapeHtml(sentenceCase(claim.concept || "Object")) + " — " + escapeHtml(changeLabel(change)) + "</h4>" +
+    '<span class="risk-tag risk-' + risk + '"><span class="risk-dot" aria-hidden="true"></span>' +
+    escapeHtml(risk) + " risk</span></div>" +
     intentionalHtml +
     trackedAsHtml(result, claim.concept) +
-    (explanation ? '<p class="finding-text">' + escapeHtml(explanation) + "</p>" : "") +
-    (claim.safety_note ? '<p class="finding-note">' + escapeHtml(claim.safety_note) + "</p>" : "") +
+    (bodyText ? '<p class="finding-text">' + escapeHtml(bodyText) + "</p>" : "") +
+    (safetyNote ? '<p class="finding-note">' + escapeHtml(safetyNote) + "</p>" : "") +
     evidenceDisclosure(claim, result);
   if (risk === "high" || risk === "medium") {
     const block = makeDoNext(change, claim.concept, result, el);
@@ -1718,7 +1899,7 @@ function renderFinding(claim, result, index) {
   } else {
     el.appendChild(makeSortedControl(el, result, claim.concept));
   }
-  if (["moved", "added", "removed"].includes(change.replace(/-/g, "_")) || intentional) {
+  if (["moved", "added", "removed", "on_floor"].includes(changeKey) || intentional) {
     el.appendChild(makeBaselineControl(claim, result, !!intentional));
   }
   return el;
@@ -1730,6 +1911,7 @@ function renderStruck(claim, result, index) {
   el.className = "struck";
   const delay = reducedMotion() ? 0 : index * 120;
   const explanation = cleanExplanation(claim.explanation || "");
+  const reason = claim.reason ? tidySentence(claim.reason) : "";
   el.innerHTML =
     '<h4 class="struck-title"><span class="strike-wrap"><span class="strike-text">' +
     escapeHtml(sentenceCase(claim.concept || "Object")) + " — " +
@@ -1738,8 +1920,8 @@ function renderStruck(claim, result, index) {
     '<path class="strike-path" style="--strike-delay:' + delay + 'ms" ' +
     'd="M2 7 C 40 3, 70 11, 110 6 S 180 3, 220 8 S 280 5, 298 7"/></svg></span></h4>' +
     trackedAsHtml(result, claim.concept) +
-    (claim.reason ? '<p class="struck-reason">' + escapeHtml(claim.reason) + "</p>" : "") +
-    (explanation ? '<p class="struck-text">' + escapeHtml(explanation) + "</p>" : "") +
+    (reason ? '<p class="struck-reason">' + escapeHtml(reason) + "</p>" : "") +
+    (explanation && isCleanProse(explanation) ? '<p class="struck-text">' + escapeHtml(explanation) + "</p>" : "") +
     evidenceDisclosure(claim, result);
   return el;
 }
@@ -1757,8 +1939,22 @@ const WATCH_STATUS_NOTES = {
   not_seen: "Not the same as missing — check it in person.",
 };
 
+/* Map watchlist concept -> the finding element id that already carries its actions. */
+function findingTargetByConcept(result) {
+  const keptRaw = Array.isArray(result.kept_claims) ? result.kept_claims
+    : Array.isArray(result.claims) ? result.claims : [];
+  const kept = sortedByRisk(keptRaw.concat(floorExtraClaims(result, keptRaw)));
+  const map = new Map();
+  kept.forEach((claim, i) => {
+    const key = normConceptKey(claim && claim.concept);
+    if (key && !map.has(key)) map.set(key, attentionTargetId("finding", claim.concept || "object", i));
+  });
+  return map;
+}
+
 function renderWatchlist(result) {
   const items = Array.isArray(result.watchlist_status) ? result.watchlist_status : [];
+  const findingTargets = findingTargetByConcept(result);
   els.watchlistBlock.hidden = !items.length;
   els.watchlistRows.innerHTML = "";
   items.forEach((item, rowIndex) => {
@@ -1777,27 +1973,37 @@ function renderWatchlist(result) {
     const thumbs = [];
     if (itemImages.before) {
       thumbs.push('<img src="' + escapeHtml(itemImages.before) + '" alt="Last visit: ' +
-        escapeHtml(concept) + '" loading="lazy">');
+        escapeHtml(sentenceCase(concept)) + '" loading="lazy">');
     }
     if (itemImages.after) {
       thumbs.push('<img src="' + escapeHtml(itemImages.after) + '" alt="Today: ' +
-        escapeHtml(concept) + '" loading="lazy">');
+        escapeHtml(sentenceCase(concept)) + '" loading="lazy">');
     }
     const statusNote = WATCH_STATUS_NOTES[statusKey] || "";
-    const serverNote = item.note && String(item.note) !== statusNote ? String(item.note) : "";
+    const serverNoteRaw = item.note && String(item.note) !== statusNote ? tidySentence(item.note) : "";
+    const serverNote = serverNoteRaw && isCleanProse(serverNoteRaw) ? serverNoteRaw : "";
+    const riskTagHtml = statusKey === "in_place"
+      ? '<span class="risk-tag risk-low no-action">No action</span>'
+      : '<span class="risk-tag risk-' + risk + '"><span class="risk-dot" aria-hidden="true"></span>' +
+        escapeHtml(risk) + " risk</span>";
     row.innerHTML =
-      '<div class="watch-main"><span class="watch-name">' + escapeHtml(concept) + "</span>" +
+      '<div class="watch-main"><span class="watch-name">' + escapeHtml(sentenceCase(concept)) + "</span>" +
       ' <span class="watch-status">— ' + escapeHtml(status) + "</span>" +
       trackedAsHtml(result, concept) +
       (statusNote ? '<div class="watch-note">' + escapeHtml(statusNote) + "</div>" : "") +
       (serverNote ? '<div class="watch-note">' + escapeHtml(serverNote) + "</div>" : "") + "</div>" +
-      '<span class="risk-tag risk-' + risk + '"><span class="risk-dot" aria-hidden="true"></span>' +
-      escapeHtml(risk) + " risk</span>" +
+      riskTagHtml +
       (thumbs.length ? '<div class="watch-thumbs">' + thumbs.join("") + "</div>" : "");
     if (statusKey === "moved" || statusKey === "missing" || statusKey === "not_seen") {
       const main = row.querySelector(".watch-main");
-      const block = makeDoNext(statusKey, concept, result, row);
-      if (block && main) main.appendChild(block);
+      const findingId = findingTargets.get(normConceptKey(concept));
+      if (main && findingId) {
+        /* The finding below already has the actions — point there instead of repeating them. */
+        main.appendChild(makeSeeWhatToDo(findingId));
+      } else if (main) {
+        const block = makeDoNext(statusKey, concept, result, row);
+        if (block) main.appendChild(block);
+      }
     }
     els.watchlistRows.appendChild(row);
   });
@@ -1920,8 +2126,7 @@ function renderCoveragePrivacy(result) {
       els.coveragePanel.hidden = false;
       if (ok) {
         els.coveragePanel.className = "coverage-panel is-ok";
-        els.coveragePanel.innerHTML = '<p class="coverage-text">Both walkthroughs covered the same room' +
-          (pct != null ? " (" + pct + "%)." : ".") + "</p>";
+        els.coveragePanel.innerHTML = '<p class="coverage-text">Both walkthroughs covered the same parts of the room.</p>';
       } else {
         const tip = cov.retake_tip ? String(cov.retake_tip) : "Re-film the missing corner the same way both times.";
         els.coveragePanel.className = "coverage-panel is-gap";
@@ -1940,12 +2145,9 @@ function renderCoveragePrivacy(result) {
     } else {
       const people = isNum(priv.people_blurred) ? priv.people_blurred : 0;
       const docs = isNum(priv.documents_blurred) ? priv.documents_blurred : 0;
-      const kept = result.keep_media === true || result.keep_media === "1";
-      els.privacyLine.textContent =
-        people + " " + plural(people, "person", "people") + " and " +
-        docs + " " + plural(docs, "paper", "papers") +
-        " blurred before anything was stored or reasoned over · " +
-        (kept ? "videos kept, as you asked" : "raw videos deleted");
+      const kept = result.keep_media === true || result.keep_media === "1" ||
+        priv.keep_media === true || priv.keep_media === "1";
+      els.privacyLine.textContent = privacySentence(people, docs, kept);
       els.privacyLine.hidden = false;
     }
   }
@@ -1968,7 +2170,7 @@ function renderTrendLine(result) {
     els.reportSummary.parentNode.insertBefore(el, els.reportSummary.nextSibling);
   }
   if (!txt) { el.hidden = true; el.textContent = ""; return; }
-  el.textContent = "Across visits: " + txt;
+  el.textContent = "Across visits: " + capitaliseSentences(cleanExplanation(txt));
   el.hidden = false;
 }
 
@@ -2065,6 +2267,7 @@ async function deleteCurrentCheck() {
 
 function renderReport(result) {
   if (!result || typeof result !== "object") return;
+  const wasLiveRun = state.running;
   state.currentResult = result;
   if (result.run_id) state.runId = result.run_id;
   resetDeleteCheck();
@@ -2077,21 +2280,26 @@ function renderReport(result) {
 
   renderCoveragePrivacy(result);
 
-  els.reportSummary.textContent = result.summary ||
-    "This check is complete. The findings below are the ones the evidence supports.";
+  els.reportSummary.textContent = capitaliseSentences(cleanExplanation(result.summary ||
+    "This check is complete. The findings below are the ones the evidence supports."));
   renderTrendLine(result);
 
-  const conceptCount = isNum(stats.concepts) ? stats.concepts :
-    isNum(result.concepts) ? result.concepts :
-    (Array.isArray(result.concepts) ? result.concepts.length : kept.length + dropped.length);
-  const samRequests = isNum(stats.sam_requests) ? stats.sam_requests :
-    isNum(result.sam_requests) ? result.sam_requests : 0;
-  const roomBit = result.room ? " · " + result.room : "";
-  const byBit = result.filmed_by ? " · filmed by " + result.filmed_by : "";
-  els.reportStats.textContent =
-    "Checked " + conceptCount + (conceptCount === 1 ? " object" : " objects") +
-    " · " + samRequests + " SAM tracks · " + fmtCost(result.cost_usd) + " · " + fmtSeconds(result.latency_s) +
-    roomBit + byBit;
+  /* (6) Header meta: room · checked date/time · filmed by — counts/cost moved to the disclosure. */
+  const headerParts = [];
+  if (result.room) headerParts.push(String(result.room));
+  const checkedDate = parseRunDate(result.run_id);
+  if (checkedDate) {
+    headerParts.push("checked " + checkedDate.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) +
+      ", " + checkedDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }));
+  } else if (result.checked_at || result.created_at || result.date) {
+    const d = new Date(result.checked_at || result.created_at || result.date);
+    if (!Number.isNaN(d.getTime())) {
+      headerParts.push("checked " + d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) +
+        ", " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }));
+    }
+  }
+  if (result.filmed_by) headerParts.push("filmed by " + result.filmed_by);
+  els.reportStats.textContent = headerParts.join(" · ");
 
   const runDate = parseRunDate(result.run_id);
   const printDate = runDate ?
@@ -2161,6 +2369,8 @@ function renderReport(result) {
   } else {
     els.reportSection.classList.add("report-animated");
   }
+
+  if (wasLiveRun) collapseLiveStages(result);
 }
 
 /* ---------------- Copy / print / send to family ---------------- */
@@ -2171,27 +2381,27 @@ function buildCopyText(result) {
   lines.push("Second Look room check" + (result.run_id ? " (" + fmtRunDate(result.run_id) + ")" : ""));
   if (result.room) lines.push("Room: " + result.room + (result.filmed_by ? " · filmed by " + result.filmed_by : ""));
   if (result.coverage && result.coverage.score != null) {
-    const pct = coveragePct(result.coverage.score);
     lines.push(result.coverage.ok === false
       ? "Coverage: these two walkthroughs don't cover the same corners — " + (result.coverage.retake_tip || "re-film the missing corner.")
-      : "Coverage: both walkthroughs covered the same room" + (pct != null ? " (" + pct + "%)." : "."));
+      : "Coverage: Both walkthroughs covered the same parts of the room.");
   }
   if (result.privacy) {
-    lines.push("Privacy: " + (result.privacy.people_blurred || 0) + " people and " +
-      (result.privacy.documents_blurred || 0) + " papers blurred before anything was stored or reasoned over.");
+    const keptMedia = result.keep_media === true || result.keep_media === "1" ||
+      result.privacy.keep_media === true || result.privacy.keep_media === "1";
+    lines.push("Privacy: " + privacySentence(result.privacy.people_blurred || 0, result.privacy.documents_blurred || 0, keptMedia));
   }
-  if (result.summary) lines.push("", result.summary);
+  if (result.summary) lines.push("", capitaliseSentences(cleanExplanation(result.summary)));
   const kept = sortedByRisk((result.kept_claims || result.claims || []).concat(floorExtraClaims(result, result.kept_claims || result.claims || [])));
   if (kept.length) {
     lines.push("", "What changed:");
     kept.forEach((c) => {
       const alias = aliasFor(result, c.concept);
+      const note = c.safety_note ? tidySentence(c.safety_note) : "";
       lines.push("- " + sentenceCase(c.concept || "") + " — " + changeLabel(c.change || "") +
         " (" + riskOf(c) + " risk)" +
         (alias ? " [tracked as “" + alias + "”]" : "") +
-        (c.explanation || c.where ? ": " + cleanExplanation(c.explanation || c.where) : "") +
-        (c.safety_note ? " " + c.safety_note : "") +
-        (c.risk_reason ? " Why this risk: " + c.risk_reason : ""));
+        ": " + findingBodyText(c) +
+        (note ? " " + note : ""));
     });
   }
   const dropped = Array.isArray(result.dropped) ? result.dropped : [];
@@ -2199,7 +2409,7 @@ function buildCopyText(result) {
     lines.push("", "Struck from the report (not supported by evidence):");
     dropped.forEach((c) => {
       lines.push("- " + sentenceCase(c.concept || "") + " — " + changeLabel(c.change || "") +
-        (c.reason ? ": " + c.reason : ""));
+        (c.reason ? ": " + tidySentence(c.reason) : ""));
     });
   } else {
     lines.push("", "Nothing was struck this time — every claim had its evidence.");
@@ -2238,7 +2448,7 @@ function buildShareText(result) {
     lines.push("Coverage note: these two walkthroughs don't cover the same corners — " +
       (result.coverage.retake_tip || "re-film the missing corner."));
   }
-  if (result.summary) lines.push("", String(result.summary).trim());
+  if (result.summary) lines.push("", capitaliseSentences(cleanExplanation(String(result.summary).trim())));
 
   const attention = (Array.isArray(state.attentionItems) ? state.attentionItems : collectAttentionItems(result))
     .filter((item) => !item.sorted);
@@ -2259,7 +2469,7 @@ function buildShareText(result) {
     lines.push("", "Struck from the report (not supported by evidence):");
     dropped.forEach((c) => {
       lines.push("- " + sentenceCase(c.concept || "") + " — " + changeLabel(c.change || "") +
-        (c.reason ? ": " + c.reason : ""));
+        (c.reason ? ": " + tidySentence(c.reason) : ""));
     });
   }
 
@@ -2309,7 +2519,7 @@ function renderHistory(items) {
     const dropped = isNum(item.dropped) ? item.dropped : 0;
     const room = item.room ? String(item.room) : "";
     btn.innerHTML =
-      '<span class="history-item-summary">' + escapeHtml(item.summary || "Room check") + "</span>" +
+      '<span class="history-item-summary">' + escapeHtml(capitaliseSentences(cleanExplanation(item.summary || "Room check"))) + "</span>" +
       '<span class="history-item-meta">' +
       (room ? '<span class="history-room">' + escapeHtml(room) + "</span> · " : "") +
       escapeHtml(fmtRunDate(item.run_id)) + " · " +
